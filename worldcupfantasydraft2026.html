@@ -259,6 +259,13 @@
 
   <div id="tab-leaderboard" class="section active">
 
+    <div class="actions-bar" style="margin-bottom:1rem;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span id="sync-status" style="font-size:12px;color:var(--text-muted)"></span>
+        <button class="sync-btn" onclick="syncLiveResults()" id="sync-btn">&#x21BB; Sync Now</button>
+        <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
+      </div>
+    </div>
     <div class="lb-wrap">
       <table class="lb-table">
         <thead><tr>
@@ -272,19 +279,7 @@
     </div>
   </div>
 
-  <div id="tab-groups" class="section">
-    <div class="actions-bar">
-      <p>Fantasy teams are <span style="color:var(--green);font-weight:500">highlighted green</span>. Sync pulls live match results automatically.</p>
-      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <span id="sync-status" style="font-size:12px;color:var(--text-muted)"></span>
-        <button class="sync-btn" onclick="syncLiveResults()" id="sync-btn">&#x21BB; Sync Now</button>
-        <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
-      </div>
 
-      </div>
-    </div>
-    <div class="groups-grid" id="groups-grid"></div>
-  </div>
 
 
   <div id="tab-groups" class="section">
