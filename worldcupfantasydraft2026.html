@@ -732,8 +732,13 @@ function applyMatchData(matches) {
     const s2 = parseInt(s2raw) || 0;
     const st = (m.status || m.match_status || m.time_elapsed || '').toUpperCase();
     const finishedFlag = m.finished === 'TRUE' || m.finished === true;
+    const liveFlag = ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
     const finished = finishedFlag || ['FT','FINISHED','FULLTIME','COMPLETED','AET','PEN'].some(x => st.includes(x));
-    const live     = !finishedFlag && ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
+
+    // Skip matches that haven't started — API sends all 72 fixtures with 0-0 defaults
+    if (!finished && !liveFlag) return;
+
+    const live = liveFlag;
     if (live) isLive = true;
 
     state.fixtureScores[t1+'|'+t2] = { s1, s2 };
