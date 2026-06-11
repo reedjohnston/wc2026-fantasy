@@ -25,21 +25,14 @@ jobs:
             --compressed \
             "https://worldcup26.ir/get/games" \
             -o scores_new.json
-
-          # Validate it's real JSON with game data before overwriting
-          if python3 -c "
-import json, sys
-with open('scores_new.json') as f:
-    d = json.load(f)
-games = d if isinstance(d, list) else d.get('games', d.get('data', d.get('matches', [])))
-print(f'Got {len(games)} games')
-sys.exit(0 if len(games) > 0 else 1)
-          "; then
+          GAME_COUNT=$(python3 -c "import json; d=json.load(open('scores_new.json')); g=d if isinstance(d,list) else d.get('games',d.get('data',d.get('matches',[]))); print(len(g))" 2>/dev/null || echo "0")
+          echo "Got $GAME_COUNT games"
+          if [ "$GAME_COUNT" -gt "0" ]; then
             mv scores_new.json scores.json
-            echo "scores.json updated successfully"
+            echo "scores.json updated"
           else
-            echo "Invalid response, keeping existing scores.json"
-            cat scores_new.json
+            echo "Invalid or empty response, keeping existing scores.json"
+            cat scores_new.json || true
           fi
 
       - name: Commit and push if changed
