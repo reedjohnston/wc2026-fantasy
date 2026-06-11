@@ -707,8 +707,8 @@ function applyMatchData(matches) {
   // Reset stats for all teams seen in this data
   const seenTeams = new Set();
   matches.forEach(m => {
-    const t1 = normWC26(m.home_team || m.homeTeam || m.team1 || '');
-    const t2 = normWC26(m.away_team || m.awayTeam || m.team2 || '');
+    const t1 = normWC26(m.home_team_name_en || m.home_team || m.homeTeam || m.team1 || '');
+    const t2 = normWC26(m.away_team_name_en || m.away_team || m.awayTeam || m.team2 || '');
     if (t1) seenTeams.add(t1);
     if (t2) seenTeams.add(t2);
   });
@@ -720,8 +720,8 @@ function applyMatchData(matches) {
   let processed = 0, lastMatchStr = '', isLive = false;
 
   matches.forEach(m => {
-    const t1 = normWC26(m.home_team || m.homeTeam || m.team1 || '');
-    const t2 = normWC26(m.away_team || m.awayTeam || m.team2 || '');
+    const t1 = normWC26(m.home_team_name_en || m.home_team || m.homeTeam || m.team1 || '');
+    const t2 = normWC26(m.away_team_name_en || m.away_team || m.awayTeam || m.team2 || '');
     if (!t1 || !t2) return;
 
     const s1raw = m.home_score ?? m.homeScore ?? m.score1 ?? m.goals_home ?? null;
@@ -730,9 +730,10 @@ function applyMatchData(matches) {
 
     const s1 = parseInt(s1raw) || 0;
     const s2 = parseInt(s2raw) || 0;
-    const st = (m.status || m.match_status || '').toUpperCase();
-    const finished = ['FT','FINISHED','FULLTIME','COMPLETED','AET','PEN'].some(x => st.includes(x));
-    const live     = ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
+    const st = (m.status || m.match_status || m.time_elapsed || '').toUpperCase();
+    const finishedFlag = m.finished === 'TRUE' || m.finished === true;
+    const finished = finishedFlag || ['FT','FINISHED','FULLTIME','COMPLETED','AET','PEN'].some(x => st.includes(x));
+    const live     = !finishedFlag && ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
     if (live) isLive = true;
 
     state.fixtureScores[t1+'|'+t2] = { s1, s2 };
@@ -777,8 +778,34 @@ async function syncLiveResults() {
   let sourceName = '';
 
   try {
-    // ── 1. openfootball (reliable, CORS-friendly, updates after each match) ──
+    // ── 1. scores.json (GitHub Action fetches worldcup26.ir every 2 min) ─────
     try {
+      const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
+        if (matches.length > 0 && (matches[0].home_team_name_en || matches[0].home_team || matches[0].homeTeam)) {
+          result = applyMatchData(matches);
+          sourceName = 'Live';
+        }
+      }
+    } catch(e) { console.warn('scores.json unavailable:', e.message); }
+
+    // ── 2. worldcup26.ir directly (browser fetch, may hit CORS) ─────────────
+    if (!result) try {
+      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
+        if (matches.length > 0) {
+          result = applyMatchData(matches);
+          sourceName = 'worldcup26.ir';
+        }
+      }
+    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
+
+    // ── 3. openfootball fallback (final scores only, updated ~daily) ──────────
+    if (!result) try {
       const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
@@ -794,23 +821,6 @@ async function syncLiveResults() {
         }
       }
     } catch(e) { console.warn('openfootball unavailable:', e.message); }
-
-    // ── 2. worldcup26.ir directly (live scores, CORS permitting) ────────────
-    try {
-      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        const matches = Array.isArray(data) ? data : (data.data || data.matches || []);
-        if (matches.length > 0) {
-          const live = applyMatchData(matches);
-          // Only override openfootball if worldcup26.ir has live matches in progress
-          if (live.isLive || !result) {
-            result = live;
-            sourceName = 'worldcup26.ir';
-          }
-        }
-      }
-    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
 
     if (!result || result.processed === 0) {
       status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — check back once games kick off';
