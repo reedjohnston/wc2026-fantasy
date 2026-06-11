@@ -2,7 +2,7 @@ name: Fetch Live Scores
 
 on:
   schedule:
-    - cron: '*/2 * * * *'   # every 2 minutes
+    - cron: '*/2 * * * *'
   workflow_dispatch:
 
 jobs:
@@ -16,8 +16,31 @@ jobs:
 
       - name: Fetch scores from worldcup26.ir
         run: |
-          curl -s "https://worldcup26.ir/get/games" -o scores.json
-          echo "Fetched $(cat scores.json | python3 -c 'import json,sys; d=json.load(sys.stdin); matches=d if isinstance(d,list) else d.get("data",d.get("matches",[])); print(len(matches))' 2>/dev/null || echo '?') matches"
+          curl -s \
+            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" \
+            -H "Accept: application/json, text/plain, */*" \
+            -H "Accept-Language: en-US,en;q=0.9" \
+            -H "Referer: https://worldcup26.ir/" \
+            -H "Origin: https://worldcup26.ir" \
+            --compressed \
+            "https://worldcup26.ir/get/games" \
+            -o scores_new.json
+
+          # Validate it's real JSON with game data before overwriting
+          if python3 -c "
+import json, sys
+with open('scores_new.json') as f:
+    d = json.load(f)
+games = d if isinstance(d, list) else d.get('games', d.get('data', d.get('matches', [])))
+print(f'Got {len(games)} games')
+sys.exit(0 if len(games) > 0 else 1)
+          "; then
+            mv scores_new.json scores.json
+            echo "scores.json updated successfully"
+          else
+            echo "Invalid response, keeping existing scores.json"
+            cat scores_new.json
+          fi
 
       - name: Commit and push if changed
         run: |
