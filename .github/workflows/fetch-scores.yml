@@ -2,8 +2,8 @@ name: Fetch Live Scores
 
 on:
   schedule:
-    - cron: '* * * * *'   # every minute
-  workflow_dispatch:       # manual trigger
+    - cron: '*/2 * * * *'   # every 2 minutes
+  workflow_dispatch:
 
 jobs:
   fetch:
@@ -14,13 +14,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch scores from API-Football
+      - name: Fetch scores from worldcup26.ir
         run: |
-          curl -s \
-            -H "x-apisports-key: ${{ secrets.APIFOOTBALL_KEY }}" \
-            "https://v3.football.api-sports.io/fixtures?league=1&season=2026" \
-            -o scores.json
-          echo "Fetched $(cat scores.json | python3 -c 'import json,sys; d=json.load(sys.stdin); print(len(d.get("response",[])))') fixtures"
+          curl -s "https://worldcup26.ir/get/games" -o scores.json
+          echo "Fetched $(cat scores.json | python3 -c 'import json,sys; d=json.load(sys.stdin); matches=d if isinstance(d,list) else d.get("data",d.get("matches",[])); print(len(matches))' 2>/dev/null || echo '?') matches"
 
       - name: Commit and push if changed
         run: |
