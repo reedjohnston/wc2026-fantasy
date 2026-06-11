@@ -63,28 +63,9 @@
   .chip.eliminated{text-decoration:line-through;opacity:0.38;}
 
   /* GROUP STAGE */
-  .groups-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
-  .group-card{background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius-lg);overflow:hidden;}
-  .group-card-header{background:#0a1a10;padding:10px 16px;display:flex;align-items:center;justify-content:space-between;}
-  .group-letter{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:white;}
-  .group-host-badge{font-size:10px;background:var(--green);color:white;padding:2px 7px;border-radius:8px;font-weight:500;}
-  .group-table{width:100%;border-collapse:collapse;}
-  .group-table th{font-size:10px;font-weight:600;color:var(--text-muted);padding:7px 12px;border-bottom:0.5px solid var(--border);letter-spacing:0.06em;text-transform:uppercase;}
-  .group-table th.r{text-align:right;}
-  .group-table td{font-size:13px;padding:9px 12px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle;}
-  .group-table tr:last-child td{border-bottom:none;}
-  .group-table td.r{text-align:right;font-variant-numeric:tabular-nums;}
-  .group-table tr.fantasy-team td{background:#f0faf5;}
-  .group-table tr.fantasy-team td:first-child{border-left:3px solid var(--green);padding-left:9px;}
   .team-name-cell{display:flex;align-items:center;gap:7px;}
   .team-flag{font-size:16px;line-height:1;flex-shrink:0;}
   .owner-tag{font-size:9px;background:var(--green-light);color:var(--green-dark);padding:1px 5px;border-radius:6px;font-weight:500;}
-  .w-input{width:36px;text-align:center;font-size:12px;padding:4px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;}
-  .w-input:focus{outline:none;border-color:var(--green);background:white;}
-  .gd-input{width:44px !important;}
-  .group-actions{padding:9px 12px;border-top:0.5px solid var(--border);display:flex;justify-content:flex-end;}
-  .mini-save-btn{font-size:11px;background:var(--green);color:white;border:none;border-radius:6px;padding:5px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;}
-  .mini-save-btn:hover{opacity:0.88;}
   .sync-btn{font-size:13px;font-weight:500;padding:9px 16px;border-radius:var(--radius);border:0.5px solid var(--border-strong);background:var(--surface);color:var(--text);cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.14s;white-space:nowrap;}
   .sync-btn:hover{background:var(--surface2);}
   .sync-btn:disabled{opacity:0.5;cursor:not-allowed;}
@@ -137,19 +118,11 @@
   .ko-score-row.winner-row .ko-team-name{color:var(--green-dark);font-weight:500;}
   .ko-team-name{font-size:12px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
   .ko-owner-tag{font-size:9px;color:var(--green-dark);background:var(--green-light);padding:1px 4px;border-radius:5px;white-space:nowrap;flex-shrink:0;}
-  .ko-score-input{width:30px;text-align:center;font-size:13px;font-weight:500;padding:3px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;flex-shrink:0;}
-  .ko-score-input:focus{outline:none;border-color:var(--green);background:white;}
-  .ko-score-input.winner-score{background:var(--green-light);border-color:var(--green-mid);color:var(--green-dark);}
+  .ko-score-display{width:30px;text-align:center;font-size:15px;font-weight:600;color:var(--text);flex-shrink:0;}
   .ko-vs-divider{text-align:center;padding:2px 8px;font-size:10px;color:var(--text-muted);font-weight:500;letter-spacing:0.04em;background:var(--surface2);border-bottom:0.5px solid var(--border);}
-  .ko-pens-row{padding:4px 10px 5px;font-size:10px;color:var(--text-muted);display:flex;align-items:center;gap:6px;border-top:0.5px solid var(--border);background:var(--surface2);}
-  .ko-pens-input{width:26px;text-align:center;font-size:11px;padding:2px;border-radius:4px;border:0.5px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;}
-  .ko-pens-input:focus{outline:none;border-color:var(--green);}
   .ko-tbd{font-size:12px;color:var(--text-muted);padding:10px;font-style:italic;}
   .ko-winner-badge{font-size:9px;background:var(--green);color:white;padding:1px 6px;border-radius:8px;font-weight:500;flex-shrink:0;}
 
-  .save-all-btn{background:var(--green);color:white;border:none;border-radius:var(--radius);padding:10px 24px;font-size:13px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;}
-  .save-all-btn:hover{opacity:0.88;}
-  .save-all-btn:active{transform:scale(0.98);}
   .actions-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;flex-wrap:wrap;gap:10px;}
   .actions-bar p{font-size:13px;color:var(--text-muted);}
 
@@ -260,7 +233,6 @@
   <div class="nav-dropdown-wrap">
     <select class="nav-dropdown" id="nav-select" onchange="switchTab(this.value)">
       <option value="leaderboard">⚽ Leaderboard</option>
-      <option value="groups">📊 Group Standings</option>
       <option value="fixtures">📅 Group Schedule</option>
       <option value="knockout">⚔️ Knockout Rounds</option>
       <option value="history">🏆 League History</option>
@@ -293,7 +265,6 @@
         <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
       </div>
 
-        <button class="save-all-btn" onclick="saveAllGroups()">Save &amp; Update</button>
       </div>
     </div>
     <div class="groups-grid" id="groups-grid"></div>
@@ -313,10 +284,7 @@
   </div>
 
   <div id="tab-knockout" class="section">
-    <div class="actions-bar">
-      <p>Enter the score for each match. Tied scores reveal a penalty row. The higher scorer (or pen winner) advances. All goals count toward GD.</p>
-      <button class="save-all-btn" onclick="saveKnockout()">Save &amp; Update Leaderboard</button>
-    </div>
+    <div class="actions-bar"><p>Knockout bracket updates automatically from live results.</p></div>
     <div id="ko-content"></div>
   </div>
 
@@ -582,7 +550,6 @@ function switchTab(id) {
   if(sel) sel.value = id;
   if(id==='leaderboard') renderLeaderboard();
   if(id==='history') renderHistory();
-  if(id==='groups') renderGroups();
   if(id==='knockout') renderKnockout();
   if(id==='fixtures') renderFixtures();
 }
@@ -611,55 +578,7 @@ function renderLeaderboard() {
 }
 
 // ── GROUPS ────────────────────────────────────────────────────────────────────
-function renderGroups() {
-  const grid=document.getElementById('groups-grid'); grid.innerHTML='';
-  GROUPS.forEach(g=>{
-    const ranked=[...g.teams].sort((a,b)=>{ const pd=teamPts(b)-teamPts(a); if(pd!==0) return pd; return groupGD(b)-groupGD(a); });
-    const card=document.createElement('div'); card.className='group-card';
-    card.innerHTML=`
-      <div class="group-card-header">
-        <div class="group-letter">Group ${g.letter}</div>
-        ${g.host?`<div class="group-host-badge">HOST</div>`:''}
-      </div>
-      <table class="group-table">
-        <thead><tr><th>Team</th><th class="r">W</th><th class="r">D</th><th class="r">L</th><th class="r">GD</th><th class="r">Pts</th><th class="r">In</th></tr></thead>
-        <tbody>${ranked.map(t=>{
-          const d=state.teams[t]||defaultTeam(),isFT=FANTASY_TEAMS.has(t),owner=OWNER[t]||'';
-          return `<tr class="${isFT?'fantasy-team':''}">
-            <td><div class="team-name-cell"><span class="team-flag">${FLAGS[t]||''}</span>${t}${isFT?`<span class="owner-tag">${owner}</span>`:''}</div></td>
-            <td class="r"><input class="w-input" type="number" min="0" id="w_${tk(t)}" value="${d.w}" oninput="liveGrp('${tk(t)}','${t}')"></td>
-            <td class="r"><input class="w-input" type="number" min="0" id="d_${tk(t)}" value="${d.d}" oninput="liveGrp('${tk(t)}','${t}')"></td>
-            <td class="r"><input class="w-input" type="number" min="0" id="l_${tk(t)}" value="${d.l}" oninput="liveGrp('${tk(t)}','${t}')"></td>
-            <td class="r"><input class="w-input gd-input" type="number" id="gd_${tk(t)}" value="${d.gd??0}" oninput="liveGrp('${tk(t)}','${t}')"></td>
-            <td class="r" id="pts_${tk(t)}" style="font-weight:500">${teamPts(t)}</td>
-            <td class="r"><input type="checkbox" ${d.alive?'checked':''} id="alive_${tk(t)}" onchange="toggleAliveG('${tk(t)}','${t}')"></td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-      <div class="group-actions"><button class="mini-save-btn" onclick="saveGroup('${g.letter}')">Save Group ${g.letter}</button></div>`;
-    grid.appendChild(card);
-  });
-}
 
-function liveGrp(key,team) {
-  const d=state.teams[team];
-  ['w','d','l'].forEach(f=>{ const el=document.getElementById(f+'_'+key); if(el) d[f]=parseInt(el.value)||0; });
-  const gdEl=document.getElementById('gd_'+key); if(gdEl) { const v=parseInt(gdEl.value); d.gd=isNaN(v)?0:v; }
-  const el=document.getElementById('pts_'+key); if(el) el.textContent=teamPts(team);
-}
-function toggleAliveG(key,team) { state.teams[team].alive=document.getElementById('alive_'+key).checked; }
-function saveGroup(letter) {
-  const g=GROUPS.find(x=>x.letter===letter);
-  g.teams.forEach(t=>{
-    liveGrp(tk(t),t);
-    const ae=document.getElementById('alive_'+tk(t)); if(ae) state.teams[t].alive=ae.checked;
-  });
-  persist(); renderGroups();
-}
-function saveAllGroups() {
-  GROUPS.forEach(g=>g.teams.forEach(t=>{ liveGrp(tk(t),t); const ae=document.getElementById('alive_'+tk(t)); if(ae) state.teams[t].alive=ae.checked; }));
-  persist(); switchTab('leaderboard');
-}
 
 // ── KNOCKOUT ──────────────────────────────────────────────────────────────────
 function renderKnockout() {
@@ -696,9 +615,8 @@ function addKORound(container, title, pts, matches) {
 }
 
 function buildMatchCard(id, label, desc, tA, tB) {
-  const card=document.createElement('div'); card.className='ko-match';
-  const ms=state.koScores[id]||{};
-  const hasBoth=tA&&tB;
+  const card = document.createElement('div'); card.className = 'ko-match';
+  const ms = state.koScores[id] || {};
   const sched = KO_SCHEDULE[id];
   const schedHTML = sched ? (() => {
     const dateStr = new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -706,76 +624,37 @@ function buildMatchCard(id, label, desc, tA, tB) {
     return `<div class="ko-match-schedule">${dateStr} · ${timeStr} · ${sched.venue}</div>`;
   })() : '';
 
-  if(!hasBoth) {
-    card.innerHTML=`<div class="ko-match-label">${label}</div>${schedHTML}${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}<div class="ko-tbd">Teams TBD</div>`;
+  if (!tA || !tB) {
+    card.innerHTML = `<div class="ko-match-label">${label}</div>${schedHTML}${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}<div class="ko-tbd">Teams TBD</div>`;
     return card;
   }
 
-  const winA=ms.winner==='A', winB=ms.winner==='B';
-  const gfA=ms.gfA??'', gfB=ms.gfB??'';
-  const showPens=(gfA!==''&&gfB!==''&&parseInt(gfA)===parseInt(gfB));
+  const winA = ms.winner === 'A', winB = ms.winner === 'B';
+  const gfA = ms.gfA ?? '', gfB = ms.gfB ?? '';
+  const hasScore = gfA !== '' && gfB !== '';
+  const isPens = hasScore && parseInt(gfA) === parseInt(gfB) && ms.winner;
+  const pensStr = isPens ? ` <span style="font-size:10px;color:var(--text-muted)">(${ms.pensA}–${ms.pensB} pens)</span>` : '';
 
-  card.innerHTML=`
+  const teamRow = (team, gf, isWinner, isFT) => `
+    <div class="ko-score-row ${isWinner ? 'winner-row' : ''}">
+      <span class="ko-team-name">${FLAGS[team]||''} ${team}</span>
+      ${isFT ? `<span class="ko-owner-tag">${OWNER[team]}</span>` : ''}
+      ${isWinner ? `<span class="ko-winner-badge">W</span>` : ''}
+      <span class="ko-score-display">${gf !== '' ? gf : '–'}</span>
+    </div>`;
+
+  card.innerHTML = `
     <div class="ko-match-label">${label}</div>
     ${schedHTML}
-    ${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}
-    <div class="ko-score-row ${winA?'winner-row':''}">
-      <span class="ko-team-name">${FLAGS[tA]||''} ${tA}</span>
-      ${FANTASY_TEAMS.has(tA)?`<span class="ko-owner-tag">${OWNER[tA]}</span>`:''}
-      ${winA?`<span class="ko-winner-badge">W</span>`:''}
-      <input class="ko-score-input ${winA?'winner-score':''}" type="number" min="0" id="gfA_${id}" value="${gfA}" placeholder="–" oninput="scoreChanged('${id}')">
-    </div>
-    <div class="ko-vs-divider">vs</div>
-    <div class="ko-score-row ${winB?'winner-row':''}">
-      <span class="ko-team-name">${FLAGS[tB]||''} ${tB}</span>
-      ${FANTASY_TEAMS.has(tB)?`<span class="ko-owner-tag">${OWNER[tB]}</span>`:''}
-      ${winB?`<span class="ko-winner-badge">W</span>`:''}
-      <input class="ko-score-input ${winB?'winner-score':''}" type="number" min="0" id="gfB_${id}" value="${gfB}" placeholder="–" oninput="scoreChanged('${id}')">
-    </div>
-    ${showPens?`
-    <div class="ko-pens-row">
-      <span style="font-size:10px;color:var(--text-muted);white-space:nowrap">Pens:</span>
-      <input class="ko-pens-input" type="number" min="0" id="pensA_${id}" value="${ms.pensA??''}" placeholder="–" oninput="pensChanged('${id}')">
-      <span style="font-size:10px;color:var(--text-muted);padding:0 2px">–</span>
-      <input class="ko-pens-input" type="number" min="0" id="pensB_${id}" value="${ms.pensB??''}" placeholder="–" oninput="pensChanged('${id}')">
-      <span style="font-size:10px;color:var(--text-muted);margin-left:4px">(pens)</span>
-    </div>`:''}`;
+    ${desc ? `<div class="ko-match-sublabel">${desc}</div>` : ''}
+    ${teamRow(tA, gfA, winA, FANTASY_TEAMS.has(tA))}
+    <div class="ko-vs-divider">vs${pensStr}</div>
+    ${teamRow(tB, gfB, winB, FANTASY_TEAMS.has(tB))}`;
   return card;
 }
 
-function scoreChanged(id) {
-  const ms=state.koScores[id]||{}; state.koScores[id]=ms;
-  const elA=document.getElementById('gfA_'+id), elB=document.getElementById('gfB_'+id);
-  const gfA=elA&&elA.value!==''?parseInt(elA.value):null;
-  const gfB=elB&&elB.value!==''?parseInt(elB.value):null;
-  ms.gfA=gfA??0; ms.gfB=gfB??0;
-  if(gfA!==null&&gfB!==null) {
-    if(gfA>gfB) { ms.winner='A'; ms.pensA=null; ms.pensB=null; }
-    else if(gfB>gfA) { ms.winner='B'; ms.pensA=null; ms.pensB=null; }
-    else { ms.winner=null; }
-  }
-  recalcKOPoints(); renderKnockout();
-}
 
-function pensChanged(id) {
-  const ms=state.koScores[id]||{}; state.koScores[id]=ms;
-  const pA=document.getElementById('pensA_'+id)?.value;
-  const pB=document.getElementById('pensB_'+id)?.value;
-  ms.pensA=pA!==''&&pA!==undefined?parseInt(pA):null;
-  ms.pensB=pB!==''&&pB!==undefined?parseInt(pB):null;
-  if(ms.pensA!==null&&ms.pensB!==null) {
-    if(ms.pensA>ms.pensB) ms.winner='A';
-    else if(ms.pensB>ms.pensA) ms.winner='B';
-    else ms.winner=null;
-  }
-  recalcKOPoints(); renderKnockout();
-}
 
-function saveKnockout() {
-  recalcKOPoints(); persist();
-  const btn=document.querySelector('#tab-knockout .save-all-btn');
-  if(btn){ btn.textContent='Saved!'; setTimeout(()=>btn.textContent='Save & Update Leaderboard',1400); }
-}
 
 // ── LIVE SYNC ─────────────────────────────────────────────────────────────────
 const API_NAME_MAP = {
@@ -863,6 +742,33 @@ async function syncLiveResults() {
             processed++;
           });
 
+          // Process knockout scores — match by team names against bracket
+          data.response.filter(f => !f.league.round.toLowerCase().includes('group')).forEach(f => {
+            const t1 = normApiFootballName(f.teams.home.name);
+            const t2 = normApiFootballName(f.teams.away.name);
+            const s1 = f.goals.home ?? 0;
+            const s2 = f.goals.away ?? 0;
+            const status = f.fixture.status.short;
+            if (!['FT','AET','PEN'].includes(status)) return;
+            // Find matching bracket slot
+            Object.entries(_bt).forEach(([matchId, {tA, tB}]) => {
+              if ((tA === t1 && tB === t2) || (tA === t2 && tB === t1)) {
+                const fwd = tA === t1;
+                const ms = state.koScores[matchId] || {};
+                ms.gfA = fwd ? s1 : s2;
+                ms.gfB = fwd ? s2 : s1;
+                if (status === 'PEN') {
+                  // Penalty winner from teams.winner
+                  const winnerName = normApiFootballName(f.teams.home.winner ? f.teams.home.name : f.teams.away.name);
+                  ms.winner = winnerName === tA ? 'A' : 'B';
+                } else {
+                  ms.winner = s1 > s2 ? (fwd ? 'A' : 'B') : s1 < s2 ? (fwd ? 'B' : 'A') : null;
+                }
+                state.koScores[matchId] = ms;
+              }
+            });
+          });
+
           const lastF = toProcess[toProcess.length-1];
           if (lastF) {
             const t1 = normApiFootballName(lastF.teams.home.name);
@@ -916,8 +822,10 @@ async function syncLiveResults() {
     }
 
     persist();
-    if (document.getElementById('tab-groups').classList.contains('active')) renderGroups();
+    recalcKOPoints();
     if (document.getElementById('tab-fixtures').classList.contains('active')) renderFixtures();
+    if (document.getElementById('tab-knockout').classList.contains('active')) renderKnockout();
+    renderLeaderboard();
 
     const src = usedLiveData ? 'Live' : 'openfootball';
     const liveLabel = isLive ? ' · 🔴 Live' : '';
