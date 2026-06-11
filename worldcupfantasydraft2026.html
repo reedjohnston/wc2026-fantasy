@@ -777,41 +777,16 @@ async function syncLiveResults() {
   let sourceName = '';
 
   try {
-    // ── 1. scores.json (GitHub Action — freshest, updated every 2 min) ───────
+    // ── 1. openfootball (reliable, CORS-friendly, updates after each match) ──
     try {
-      const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        const matches = Array.isArray(data) ? data : (data.data || data.matches || []);
-        if (matches.length > 0 && (matches[0].home_team || matches[0].homeTeam || matches[0].team1)) {
-          result = applyMatchData(matches);
-          sourceName = 'Live';
-        }
-      }
-    } catch(e) { console.warn('scores.json unavailable:', e.message); }
-
-    // ── 2. worldcup26.ir directly ────────────────────────────────────────────
-    if (!result) try {
-      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        const matches = Array.isArray(data) ? data : (data.data || data.matches || []);
-        if (matches.length > 0) {
-          result = applyMatchData(matches);
-          sourceName = 'worldcup26.ir';
-        }
-      }
-    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
-
-    // ── 3. Fallback: openfootball ─────────────────────────────────────────────
-    if (!result) try {
       const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         const finished = (data.matches||[]).filter(m => m.group && typeof m.score1==='number' && typeof m.score2==='number');
         if (finished.length > 0) {
           const mapped = finished.map(m => ({
-            home_team: API_NAME_MAP[m.team1]||m.team1, away_team: API_NAME_MAP[m.team2]||m.team2,
+            home_team: API_NAME_MAP[m.team1]||m.team1,
+            away_team: API_NAME_MAP[m.team2]||m.team2,
             home_score: m.score1, away_score: m.score2, status: 'FT'
           }));
           result = applyMatchData(mapped);
@@ -820,8 +795,25 @@ async function syncLiveResults() {
       }
     } catch(e) { console.warn('openfootball unavailable:', e.message); }
 
+    // ── 2. worldcup26.ir directly (live scores, CORS permitting) ────────────
+    try {
+      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const matches = Array.isArray(data) ? data : (data.data || data.matches || []);
+        if (matches.length > 0) {
+          const live = applyMatchData(matches);
+          // Only override openfootball if worldcup26.ir has live matches in progress
+          if (live.isLive || !result) {
+            result = live;
+            sourceName = 'worldcup26.ir';
+          }
+        }
+      }
+    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
+
     if (!result || result.processed === 0) {
-      status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — tournament starts June 11';
+      status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — check back once games kick off';
       btn.disabled = false;
       btn.textContent = '⟳ Sync Now';
       return;
