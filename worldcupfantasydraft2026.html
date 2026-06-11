@@ -244,12 +244,7 @@
   .trophy-item{display:flex;flex-direction:column;align-items:center;gap:6px;}
   .trophy-year{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:0.5px;color:var(--text-muted);}
   @media(max-width:600px){.history-trophies{gap:10px;}.trophy-item svg{width:52px!important;height:auto!important;}}
-  /* API KEY BAR */
-  .api-key-bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:0.5rem;padding:8px 12px;background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius);}
-  .api-key-input{flex:1;min-width:180px;font-size:13px;padding:7px 10px;border-radius:7px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;outline:none;}
-  .api-key-input:focus{border-color:var(--green);}
-  .api-key-status{font-size:12px;color:var(--text-muted);white-space:nowrap;}
-  @media(max-width:600px){.api-key-input{min-width:0;width:100%;}}
+
 </style>
 </head>
 <body>
@@ -297,9 +292,7 @@
         <button class="sync-btn" onclick="syncLiveResults()" id="sync-btn">&#x21BB; Sync Now</button>
         <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
       </div>
-      <div class="api-key-bar" id="api-key-bar">
-        <input class="api-key-input" id="apifootball-key" type="password" placeholder="Paste API-Football key for live scores…" autocomplete="off" oninput="saveApiKey()">
-        <span id="api-key-status" class="api-key-status"></span>
+
         <button class="save-all-btn" onclick="saveAllGroups()">Save &amp; Update</button>
       </div>
     </div>
@@ -817,53 +810,6 @@ const APIFOOTBALL_NAME_MAP = {
 };
 function normApiFootballName(n) { return APIFOOTBALL_NAME_MAP[n] || n; }
 
-function saveApiKey() {
-  const key = document.getElementById('apifootball-key')?.value?.trim();
-  if (key) {
-    localStorage.setItem('apifootball_key', key);
-    const st = document.getElementById('api-key-status');
-    if (st) { st.textContent = '✓ Key saved for this session'; st.style.color = 'var(--green)'; }
-  }
-}
-
-function loadApiKey() {
-  const saved = localStorage.getItem('apifootball_key');
-  if (saved) {
-    const el = document.getElementById('apifootball-key');
-    if (el) el.value = saved;
-  }
-  return saved || '';
-}
-
-async function fetchFromApiFootball(key) {
-  // Fetch all World Cup 2026 fixtures (league=1, season=2026)
-  const url = 'https://v3.football.api-sports.io/fixtures?league=1&season=2026';
-  const res = await fetch(url, {
-    headers: { 'x-apisports-key': key }
-  });
-  if (!res.ok) throw new Error('API-Football HTTP ' + res.status);
-  const data = await res.json();
-  if (data.errors && Object.keys(data.errors).length > 0) {
-    const errMsg = Object.values(data.errors)[0];
-    throw new Error(errMsg);
-  }
-
-  // Process fixtures
-  const finished = data.response.filter(f => {
-    const status = f.fixture.status.short;
-    // FT = full time, AET = after extra time, PEN = penalties
-    return ['FT','AET','PEN'].includes(status);
-  });
-
-  // Also grab live matches
-  const live = data.response.filter(f => {
-    const status = f.fixture.status.short;
-    return ['1H','HT','2H','ET','BT','P','INT','LIVE'].includes(status);
-  });
-
-  return { finished, live, all: data.response };
-}
-
 async function syncLiveResults() {
   const btn = document.getElementById('sync-btn');
   const status = document.getElementById('sync-status');
@@ -871,81 +817,79 @@ async function syncLiveResults() {
   btn.textContent = '⟳ Syncing...';
   status.innerHTML = '<span class="sync-dot live"></span> Fetching live data...';
 
-  const apiKey = loadApiKey();
-
   try {
-    let processed = 0;
-    let lastMatchStr = '';
-    let isLive = false;
+    // Try scores.json (written by GitHub Action with API-Football data)
+    let processed = 0, lastMatchStr = '', isLive = false;
+    let usedLiveData = false;
 
-    if (apiKey) {
-      // ── API-Football path ──────────────────────────────────────────────────
-      const { finished, live, all } = await fetchFromApiFootball(apiKey);
-      const toProcess = [...finished, ...live];
+    try {
+      const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.response && data.response.length > 0) {
+          usedLiveData = true;
+          const toProcess = data.response.filter(f => {
+            const s = f.fixture.status.short;
+            return ['FT','AET','PEN','1H','HT','2H','ET','BT','P','INT','LIVE'].includes(s);
+          });
 
-      // Reset seen teams
-      const seenTeams = new Set();
-      toProcess.forEach(f => {
-        seenTeams.add(normApiFootballName(f.teams.home.name));
-        seenTeams.add(normApiFootballName(f.teams.away.name));
-      });
-      seenTeams.forEach(t => {
-        if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; }
-      });
-      if (!state.fixtureScores) state.fixtureScores = {};
+          const seenTeams = new Set();
+          toProcess.forEach(f => {
+            seenTeams.add(normApiFootballName(f.teams.home.name));
+            seenTeams.add(normApiFootballName(f.teams.away.name));
+          });
+          seenTeams.forEach(t => {
+            if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; }
+          });
+          if (!state.fixtureScores) state.fixtureScores = {};
 
-      toProcess.forEach(f => {
-        const t1 = normApiFootballName(f.teams.home.name);
-        const t2 = normApiFootballName(f.teams.away.name);
-        const s1 = f.goals.home ?? 0;
-        const s2 = f.goals.away ?? 0;
-        const statusShort = f.fixture.status.short;
-        const isFinished = ['FT','AET','PEN'].includes(statusShort);
+          toProcess.forEach(f => {
+            const t1 = normApiFootballName(f.teams.home.name);
+            const t2 = normApiFootballName(f.teams.away.name);
+            const s1 = f.goals.home ?? 0;
+            const s2 = f.goals.away ?? 0;
+            const statusShort = f.fixture.status.short;
+            const isFinished = ['FT','AET','PEN'].includes(statusShort);
+            if (['1H','HT','2H','ET','BT','P','INT','LIVE'].includes(statusShort)) isLive = true;
 
-        // Store per-match score
-        state.fixtureScores[t1+'|'+t2] = { s1, s2 };
+            state.fixtureScores[t1+'|'+t2] = { s1, s2 };
+            if (!state.teams[t1] || !state.teams[t2]) return;
+            state.teams[t1].gd += (s1-s2); state.teams[t2].gd += (s2-s1);
+            if (isFinished) {
+              if (s1>s2) { state.teams[t1].w++; state.teams[t2].l++; }
+              else if (s2>s1) { state.teams[t2].w++; state.teams[t1].l++; }
+              else { state.teams[t1].d++; state.teams[t2].d++; }
+            }
+            processed++;
+          });
 
-        if (!state.teams[t1] || !state.teams[t2]) return;
-
-        state.teams[t1].gd += (s1 - s2);
-        state.teams[t2].gd += (s2 - s1);
-
-        if (isFinished) {
-          if (s1 > s2) { state.teams[t1].w++; state.teams[t2].l++; }
-          else if (s2 > s1) { state.teams[t2].w++; state.teams[t1].l++; }
-          else { state.teams[t1].d++; state.teams[t2].d++; }
+          const lastF = toProcess[toProcess.length-1];
+          if (lastF) {
+            const t1 = normApiFootballName(lastF.teams.home.name);
+            const t2 = normApiFootballName(lastF.teams.away.name);
+            lastMatchStr = `${t1} ${lastF.goals.home ?? '?'}–${lastF.goals.away ?? '?'} ${t2}`;
+          }
         }
-        processed++;
-      });
-
-      isLive = live.length > 0;
-      const lastF = toProcess[toProcess.length - 1];
-      if (lastF) {
-        const t1 = normApiFootballName(lastF.teams.home.name);
-        const t2 = normApiFootballName(lastF.teams.away.name);
-        lastMatchStr = `${t1} ${lastF.goals.home ?? '?'}–${lastF.goals.away ?? '?'} ${t2}`;
       }
+    } catch(e) { console.warn('scores.json not available yet:', e.message); }
 
-    } else {
-      // ── Fallback: openfootball GitHub JSON ─────────────────────────────────
+    // Fallback to openfootball if scores.json had no data
+    if (!usedLiveData) {
       const res = await fetch(
         'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json',
         { cache: 'no-store' }
       );
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
-
       const finished = data.matches.filter(m =>
         m.group && typeof m.score1 === 'number' && typeof m.score2 === 'number'
       );
-
       if (finished.length === 0) {
-        status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — add your API-Football key above for live scores';
+        status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — tournament starts June 11';
         btn.disabled = false;
         btn.textContent = '⟳ Sync Now';
         return;
       }
-
       const seenTeams = new Set();
       finished.forEach(m => {
         seenTeams.add(API_NAME_MAP[m.team1] || m.team1);
@@ -955,7 +899,6 @@ async function syncLiveResults() {
         if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; }
       });
       if (!state.fixtureScores) state.fixtureScores = {};
-
       finished.forEach(m => {
         const t1 = API_NAME_MAP[m.team1] || m.team1;
         const t2 = API_NAME_MAP[m.team2] || m.team2;
@@ -968,19 +911,17 @@ async function syncLiveResults() {
         else { state.teams[t1].d++; state.teams[t2].d++; }
         processed++;
       });
-
       const last = finished[finished.length-1];
       lastMatchStr = `${last.team1} ${last.score1}–${last.score2} ${last.team2}`;
     }
 
     persist();
-
     if (document.getElementById('tab-groups').classList.contains('active')) renderGroups();
     if (document.getElementById('tab-fixtures').classList.contains('active')) renderFixtures();
 
-    const sourceLabel = apiKey ? 'API-Football' : 'openfootball';
-    const liveLabel = isLive ? ' · 🔴 Live matches in progress' : '';
-    status.innerHTML = `<span class="sync-dot done"></span> ${sourceLabel}: ${processed} match${processed!==1?'es':''} · ${lastMatchStr}${liveLabel}`;
+    const src = usedLiveData ? 'Live' : 'openfootball';
+    const liveLabel = isLive ? ' · 🔴 Live' : '';
+    status.innerHTML = `<span class="sync-dot done"></span> ${src}: ${processed} match${processed!==1?'es':''}${lastMatchStr ? ' · ' + lastMatchStr : ''}${liveLabel}`;
 
   } catch(e) {
     status.innerHTML = `<span class="sync-dot err"></span> Sync failed: ${e.message}`;
@@ -1438,7 +1379,6 @@ document.addEventListener('visibilitychange', () => {
 // ── INIT ─────────────────────────────────────────────────────────────────────
 recalcKOPoints();
 renderLeaderboard();
-loadApiKey();
 </script>
 </body>
 </html>
