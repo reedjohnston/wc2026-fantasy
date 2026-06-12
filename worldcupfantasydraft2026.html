@@ -717,7 +717,8 @@ function applyMatchData(matches) {
   seenTeams.forEach(t => {
     if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; }
   });
-  if (!state.fixtureScores) state.fixtureScores = {};
+  // Fully reset fixtureScores so stale 0-0 entries don't persist
+  state.fixtureScores = {};
 
   let processed = 0, lastMatchStr = '', isLive = false;
 
@@ -1408,6 +1409,15 @@ function renderGroups() {
 // ── INIT ─────────────────────────────────────────────────────────────────────
 recalcKOPoints();
 renderLeaderboard();
+// Clear any stale 0-0 fixture scores from previous bad syncs
+if (state.fixtureScores) {
+  const cleaned = {};
+  Object.entries(state.fixtureScores).forEach(([k, v]) => {
+    if (v.final || v.live) cleaned[k] = v;
+  });
+  state.fixtureScores = cleaned;
+  persist();
+}
 </script>
 </body>
 </html>
