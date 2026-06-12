@@ -783,34 +783,8 @@ async function syncLiveResults() {
   let sourceName = '';
 
   try {
-    // ── 1. scores.json (GitHub Action fetches worldcup26.ir every 2 min) ─────
+    // ── 1. openfootball (authoritative final scores, manually verified) ───────
     try {
-      const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
-        if (matches.length > 0 && (matches[0].home_team_name_en || matches[0].home_team || matches[0].homeTeam)) {
-          result = applyMatchData(matches);
-          sourceName = 'Live';
-        }
-      }
-    } catch(e) { console.warn('scores.json unavailable:', e.message); }
-
-    // ── 2. worldcup26.ir directly (browser fetch, may hit CORS) ─────────────
-    if (!result) try {
-      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
-      if (res.ok) {
-        const data = await res.json();
-        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
-        if (matches.length > 0) {
-          result = applyMatchData(matches);
-          sourceName = 'worldcup26.ir';
-        }
-      }
-    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
-
-    // ── 3. openfootball fallback (final scores only, updated ~daily) ──────────
-    if (!result) try {
       const res = await fetch('https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json', { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
@@ -819,13 +793,47 @@ async function syncLiveResults() {
           const mapped = finished.map(m => ({
             home_team: API_NAME_MAP[m.team1]||m.team1,
             away_team: API_NAME_MAP[m.team2]||m.team2,
-            home_score: m.score1, away_score: m.score2, status: 'FT'
+            home_score: m.score1, away_score: m.score2,
+            finished: true, status: 'FT'
           }));
           result = applyMatchData(mapped);
           sourceName = 'openfootball';
         }
       }
     } catch(e) { console.warn('openfootball unavailable:', e.message); }
+
+    // ── 2. worldcup26.ir (live in-progress scores only) ──────────────────────
+    // Only used to supplement with live match data not yet in openfootball
+    try {
+      const res = await fetch('https://worldcup26.ir/get/games', { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
+        const liveOnly = matches.filter(m => {
+          const st = (m.status || m.time_elapsed || '').toUpperCase();
+          return ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
+        });
+        if (liveOnly.length > 0) {
+          const liveResult = applyMatchData(liveOnly);
+          if (!result) result = liveResult;
+          else { result.isLive = true; result.lastMatchStr = liveResult.lastMatchStr; }
+          sourceName = result.isLive ? 'Live 🔴' : sourceName;
+        }
+      }
+    } catch(e) { console.warn('worldcup26.ir unavailable:', e.message); }
+
+    // ── 3. scores.json fallback (GitHub Action) ───────────────────────────────
+    if (!result) try {
+      const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
+      if (res.ok) {
+        const data = await res.json();
+        const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
+        if (matches.length > 0 && (matches[0].home_team_name_en || matches[0].home_team || matches[0].homeTeam)) {
+          result = applyMatchData(matches);
+          sourceName = 'scores.json';
+        }
+      }
+    } catch(e) { console.warn('scores.json unavailable:', e.message); }
 
     if (!result || result.processed === 0) {
       status.innerHTML = '<span class="sync-dot done"></span> No completed matches yet — check back once games kick off';
