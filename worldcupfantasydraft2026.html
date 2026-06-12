@@ -104,6 +104,7 @@
   .fixture-owner-tag{font-size:9px;color:var(--green-dark);background:var(--green-light);padding:1px 5px;border-radius:5px;font-weight:500;white-space:nowrap;flex-shrink:0;}
   .fixture-venue{font-size:10px;color:var(--text-muted);padding:2px 14px 5px;text-align:center;font-style:italic;}
   .fixture-final-badge{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
+  .fixture-live-badge{font-size:9px;font-weight:600;color:#e53e3e;text-transform:uppercase;letter-spacing:0.06em;}
 
   /* KNOCKOUT */
   .ko-section{margin-bottom:2rem;}
@@ -742,7 +743,7 @@ function applyMatchData(matches) {
     const live = liveFlag;
     if (live) isLive = true;
 
-    state.fixtureScores[t1+'|'+t2] = { s1, s2 };
+    state.fixtureScores[t1+'|'+t2] = { s1, s2, final: finished, live: live };
 
     if (state.teams[t1] && state.teams[t2]) {
       state.teams[t1].gd += (s1-s2);
@@ -1067,6 +1068,8 @@ function buildFixtureMatchHTML(m) {
   const fwd = state.fixtureScores && !!state.fixtureScores[t1n+'|'+t2n];
   const s1 = hasScore ? (fwd ? score.s1 : score.s2) : null;
   const s2 = hasScore ? (fwd ? score.s2 : score.s1) : null;
+  const isFinal = hasScore && (fwd ? score.final : score.final);
+  const isLiveMatch = hasScore && (fwd ? score.live : score.live);
   const t1win = hasScore && s1 > s2, t2win = hasScore && s2 > s1;
   const isFT1 = FANTASY_TEAMS.has(t1n), isFT2 = FANTASY_TEAMS.has(t2n);
   const dateStr = new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -1090,14 +1093,14 @@ function buildFixtureMatchHTML(m) {
 
   let centerHTML;
   if (hasScore) {
+    const badge = isFinal
+      ? `<div class="fixture-final-badge">Final</div>`
+      : isLiveMatch
+      ? `<div class="fixture-live-badge">🔴 Live</div>`
+      : `<div class="fixture-live-badge">In Progress</div>`;
     centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
       <div class="fixture-score">${s1} – ${s2}</div>
-      <div class="fixture-final-badge">Final</div>
-    </div>`;
-  } else if (isUpcoming) {
-    centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
-      <div class="fixture-score pending">${dateStr}</div>
-      <div style="font-size:10px;color:var(--text-muted)">${kickoff}</div>
+      ${badge}
     </div>`;
   } else {
     centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
@@ -1182,10 +1185,15 @@ function renderFixtures() {
           const fwd = state.fixtureScores && !!state.fixtureScores[t1n+'|'+t2n];
           const s1 = hasScore ? (fwd ? score.s1 : score.s2) : null;
           const s2 = hasScore ? (fwd ? score.s2 : score.s1) : null;
-          const t1win = hasScore && s1 > s2, t2win = hasScore && s2 > s1;
+          const isFinal = hasScore && score.final;
+          const isLiveMatch = hasScore && score.live;
+          const t1win = hasScore && isFinal && s1 > s2, t2win = hasScore && isFinal && s2 > s1;
           const isFT1 = FANTASY_TEAMS.has(t1n), isFT2 = FANTASY_TEAMS.has(t2n);
           const dateStr = new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
           const kickoff = localKickoff(m.date, m.time);
+          const matchBadge = hasScore
+            ? (isFinal ? '<div class="fixture-final-badge">Final</div>' : isLiveMatch ? '<div class="fixture-live-badge">🔴 Live</div>' : '<div class="fixture-live-badge">In Progress</div>')
+            : '';
           html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''}">
             <div class="fixture-team home ${t1win?'winner':''}">
               ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
@@ -1196,7 +1204,7 @@ function renderFixtures() {
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
               <div style="font-size:9px;background:var(--green-light);color:var(--green-dark);padding:1px 5px;border-radius:5px;font-weight:500;white-space:nowrap">${m.group}</div>
               <div class="fixture-score ${hasScore?'':'pending'}">${hasScore ? s1+' – '+s2 : kickoff}</div>
-              ${hasScore ? '<div class="fixture-final-badge">Final</div>' : ''}
+              ${matchBadge}
               ${(() => { const v = getVenue(t1n, t2n); return v ? `<div style="font-size:9px;color:var(--text-muted);white-space:nowrap;text-align:center">${v}</div>` : ''; })()}
             </div>
             <div class="fixture-team away ${t2win?'winner':''}">
