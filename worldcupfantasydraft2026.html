@@ -1092,16 +1092,16 @@ function buildFixtureMatchHTML(m) {
   const isUpcoming = matchUtc && Date.now() < matchUtc;
 
   let centerHTML;
-  if (hasScore) {
+  if (hasScore && (isFinal || isLiveMatch)) {
     const badge = isFinal
       ? `<div class="fixture-final-badge">Final</div>`
-      : isLiveMatch
-      ? `<div class="fixture-live-badge">🔴 Live</div>`
-      : `<div class="fixture-live-badge">In Progress</div>`;
+      : `<div class="fixture-live-badge">🔴 Live</div>`;
     centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
       <div class="fixture-score">${s1} – ${s2}</div>
       ${badge}
     </div>`;
+  } else if (hasScore) {
+    centerHTML = `<div class="fixture-score">${s1} – ${s2}</div>`;
   } else {
     centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
       <div class="fixture-score pending">${dateStr}</div>
@@ -1191,8 +1191,10 @@ function renderFixtures() {
           const isFT1 = FANTASY_TEAMS.has(t1n), isFT2 = FANTASY_TEAMS.has(t2n);
           const dateStr = new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
           const kickoff = localKickoff(m.date, m.time);
-          const matchBadge = hasScore
-            ? (isFinal ? '<div class="fixture-final-badge">Final</div>' : isLiveMatch ? '<div class="fixture-live-badge">🔴 Live</div>' : '<div class="fixture-live-badge">In Progress</div>')
+          const matchBadge = isFinal
+            ? '<div class="fixture-final-badge">Final</div>'
+            : isLiveMatch
+            ? '<div class="fixture-live-badge">🔴 Live</div>'
             : '';
           html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''}">
             <div class="fixture-team home ${t1win?'winner':''}">
