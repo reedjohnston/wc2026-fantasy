@@ -103,6 +103,7 @@
   .fixture-fantasy-dot{width:6px;height:6px;border-radius:50%;background:var(--green);flex-shrink:0;}
   .fixture-owner-tag{font-size:9px;color:var(--green-dark);background:var(--green-light);padding:1px 5px;border-radius:5px;font-weight:500;white-space:nowrap;flex-shrink:0;}
   .fixture-venue{font-size:10px;color:var(--text-muted);padding:2px 14px 5px;text-align:center;font-style:italic;}
+  .fixture-final-badge{font-size:9px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;}
 
   /* KNOCKOUT */
   .ko-section{margin-bottom:2rem;}
@@ -1071,6 +1072,40 @@ function buildFixtureMatchHTML(m) {
   const dateStr = new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
   const kickoff = localKickoff(m.date, m.time);
   const venue = getVenue(t1n, t2n);
+
+  // Check if match time has passed (game may have started/finished)
+  const matchUtc = (() => {
+    try {
+      const match = m.time.match(/^(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/);
+      if (!match) return null;
+      const [, hh, mm, off] = match;
+      const offsetMins = parseInt(off) * 60;
+      return Date.UTC(
+        parseInt(m.date.slice(0,4)), parseInt(m.date.slice(5,7))-1, parseInt(m.date.slice(8,10)),
+        parseInt(hh) - Math.floor(offsetMins/60), parseInt(mm) - (offsetMins%60)
+      );
+    } catch(e) { return null; }
+  })();
+  const isUpcoming = matchUtc && Date.now() < matchUtc;
+
+  let centerHTML;
+  if (hasScore) {
+    centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:3px">
+      <div class="fixture-score">${s1} – ${s2}</div>
+      <div class="fixture-final-badge">Final</div>
+    </div>`;
+  } else if (isUpcoming) {
+    centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div class="fixture-score pending">${dateStr}</div>
+      <div style="font-size:10px;color:var(--text-muted)">${kickoff}</div>
+    </div>`;
+  } else {
+    centerHTML = `<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div class="fixture-score pending">${dateStr}</div>
+      <div style="font-size:10px;color:var(--text-muted)">${kickoff}</div>
+    </div>`;
+  }
+
   return `<div class="fixture-row ${hasScore?'has-score':''}">
     <div class="fixture-team home ${t1win?'winner':''}">
       ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
@@ -1078,7 +1113,7 @@ function buildFixtureMatchHTML(m) {
       <span>${FLAGS[t1n]||''}</span>
       ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
     </div>
-    <div class="fixture-score ${hasScore?'':'pending'}">${hasScore ? s1+' – '+s2 : `<span style="display:flex;flex-direction:column;align-items:center;gap:1px"><span>${dateStr}</span><span style="font-size:9px;opacity:0.8">${kickoff}</span></span>`}</div>
+    ${centerHTML}
     <div class="fixture-team away ${t2win?'winner':''}">
       ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
       <span>${FLAGS[t2n]||''}</span>
@@ -1161,6 +1196,7 @@ function renderFixtures() {
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
               <div style="font-size:9px;background:var(--green-light);color:var(--green-dark);padding:1px 5px;border-radius:5px;font-weight:500;white-space:nowrap">${m.group}</div>
               <div class="fixture-score ${hasScore?'':'pending'}">${hasScore ? s1+' – '+s2 : kickoff}</div>
+              ${hasScore ? '<div class="fixture-final-badge">Final</div>' : ''}
               ${(() => { const v = getVenue(t1n, t2n); return v ? `<div style="font-size:9px;color:var(--text-muted);white-space:nowrap;text-align:center">${v}</div>` : ''; })()}
             </div>
             <div class="fixture-team away ${t2win?'winner':''}">
