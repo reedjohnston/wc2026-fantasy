@@ -266,7 +266,6 @@
         <span id="sync-status" style="font-size:12px;color:var(--text-muted)"></span>
         <button class="sync-btn" onclick="syncLiveResults()" id="sync-btn">&#x21BB; Sync Now</button>
         <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
-        <button class="sync-btn" onclick="debugScores()" style="font-size:11px;opacity:0.6">🔍 Debug</button>
       </div>
     </div>
     <div class="lb-wrap">
@@ -1402,38 +1401,6 @@ function renderGroups() {
   });
 }
 
-
-// ── DEBUG ─────────────────────────────────────────────────────────────────────
-async function debugScores() {
-  try {
-    const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
-    const data = await res.json();
-    const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
-
-    // Test processing on first 3 matches
-    let debug = '';
-    matches.slice(0, 3).forEach(m => {
-      const t1 = normWC26(m.home_team_name_en || m.home_team || m.homeTeam || m.team1 || '');
-      const t2 = normWC26(m.away_team_name_en || m.away_team || m.awayTeam || m.team2 || '');
-      const s1raw = m.home_score ?? m.homeScore ?? m.score1 ?? null;
-      const s2raw = m.away_score ?? m.awayScore ?? m.score2 ?? null;
-      const s1 = parseInt(s1raw) || 0;
-      const s2 = parseInt(s2raw) || 0;
-      const apiSt = (m.status || m.match_status || m.time_elapsed || '').toUpperCase();
-      const finished = m.finished === 'TRUE' || m.finished === true || apiSt === 'FINISHED' || apiSt === 'FT';
-      const live = !finished && ['1H','2H','HT','ET','LIVE'].some(x => apiSt.includes(x));
-      const stored = state.fixtureScores[t1+'|'+t2] || state.fixtureScores[t2+'|'+t1] || null;
-      debug += `${t1} vs ${t2}\n`;
-      debug += `  s1raw="${s1raw}" s2raw="${s2raw}" → s1=${s1} s2=${s2}\n`;
-      debug += `  finished=${finished} live=${live} apiSt="${apiSt}"\n`;
-      debug += `  stored=${JSON.stringify(stored)}\n\n`;
-    });
-
-    alert(debug);
-  } catch(e) {
-    alert('Error: ' + e.message);
-  }
-}
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
 recalcKOPoints();
