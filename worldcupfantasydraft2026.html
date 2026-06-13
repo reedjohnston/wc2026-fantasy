@@ -266,6 +266,7 @@
         <span id="sync-status" style="font-size:12px;color:var(--text-muted)"></span>
         <button class="sync-btn" onclick="syncLiveResults()" id="sync-btn">&#x21BB; Sync Now</button>
         <button class="sync-btn auto-refresh-btn" id="auto-refresh-btn" onclick="toggleAutoRefresh()">⏱ Auto: Off</button>
+        <button class="sync-btn" onclick="debugScores()" style="font-size:11px;opacity:0.6">🔍 Debug</button>
       </div>
     </div>
     <div class="lb-wrap">
@@ -1440,6 +1441,27 @@ function renderGroups() {
       </table>`;
     grid.appendChild(card);
   });
+}
+
+
+// ── DEBUG ─────────────────────────────────────────────────────────────────────
+async function debugScores() {
+  try {
+    const res = await fetch('https://reedjohnston.github.io/wc2026-fantasy/scores.json?t=' + Date.now(), { cache: 'no-store' });
+    const data = await res.json();
+    const matches = Array.isArray(data) ? data : (data.games || data.data || data.matches || []);
+    const sample = matches.slice(0, 3);
+    const info = sample.map(m => JSON.stringify({
+      t1: m.home_team_name_en || m.home_team || m.team1,
+      t2: m.away_team_name_en || m.away_team || m.team2,
+      s1: m.home_score, s2: m.away_score,
+      finished: m.finished, status: m.status,
+      time_elapsed: m.time_elapsed
+    })).join('\n');
+    alert('scores.json sample (first 3 matches):\n\n' + info + '\n\nTotal: ' + matches.length + ' matches');
+  } catch(e) {
+    alert('Error: ' + e.message);
+  }
 }
 
 // ── INIT ─────────────────────────────────────────────────────────────────────
