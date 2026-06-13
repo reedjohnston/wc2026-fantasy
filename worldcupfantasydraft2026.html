@@ -706,7 +706,6 @@ const WC26_NAME_MAP = {
 function normWC26(n) { return WC26_NAME_MAP[n] || n; }
 
 function applyMatchData(matches) {
-  // Reset team stats for teams in this dataset
   const seenTeams = new Set();
   matches.forEach(m => {
     const t1 = normWC26(m.home_team_name_en || m.home_team || m.homeTeam || m.team1 || '');
@@ -718,12 +717,35 @@ function applyMatchData(matches) {
     if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; }
   });
   if (!state.fixtureScores) state.fixtureScores = {};
-  // Remove only non-final entries (stale 0-0 defaults) — keep confirmed finals intact
+  // Wipe only non-final non-live scores before repopulating
   Object.keys(state.fixtureScores).forEach(k => {
-    if (!state.fixtureScores[k].final) delete state.fixtureScores[k];
+    if (!state.fixtureScores[k].final && !state.fixtureScores[k].live) delete state.fixtureScores[k];
   });
 
   let processed = 0, lastMatchStr = '', isLive = false;
+  const now = Date.now();
+
+  // Build a kickoff time lookup from GROUP_FIXTURES for status detection
+  const kickoffMap = {};
+  if (typeof GROUP_FIXTURES !== 'undefined') {
+    GROUP_FIXTURES.forEach(f => {
+      const t1 = API_NAME_MAP[f.t1] || f.t1;
+      const t2 = API_NAME_MAP[f.t2] || f.t2;
+      try {
+        const match = f.time.match(/^(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/);
+        if (match) {
+          const [, hh, mm, off] = match;
+          const offsetMins = parseInt(off) * 60;
+          const utcMs = Date.UTC(
+            parseInt(f.date.slice(0,4)), parseInt(f.date.slice(5,7))-1, parseInt(f.date.slice(8,10)),
+            parseInt(hh) - Math.floor(offsetMins/60), parseInt(mm) - (offsetMins%60)
+          );
+          kickoffMap[t1+'|'+t2] = utcMs;
+          kickoffMap[t2+'|'+t1] = utcMs;
+        }
+      } catch(e) {}
+    });
+  }
 
   matches.forEach(m => {
     const t1 = normWC26(m.home_team_name_en || m.home_team || m.homeTeam || m.team1 || '');
@@ -733,21 +755,31 @@ function applyMatchData(matches) {
     const s1raw = m.home_score ?? m.homeScore ?? m.score1 ?? m.goals_home ?? null;
     const s2raw = m.away_score ?? m.awayScore ?? m.score2 ?? m.goals_away ?? null;
     if (s1raw === null || s2raw === null) return;
-
     const s1 = parseInt(s1raw) || 0;
     const s2 = parseInt(s2raw) || 0;
-    const st = (m.status || m.match_status || m.time_elapsed || '').toUpperCase();
-    const finishedFlag = m.finished === 'TRUE' || m.finished === true;
-    const liveFlag = ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => st.includes(x));
-    const finished = finishedFlag || ['FT','FINISHED','FULLTIME','COMPLETED','AET','PEN'].some(x => st.includes(x));
 
-    // Skip matches that haven't started — API sends all 72 fixtures with 0-0 defaults
-    if (!finished && !liveFlag) return;
+    // Determine match status using API fields AND kickoff time
+    const apiSt = (m.status || m.match_status || m.time_elapsed || '').toUpperCase();
+    const apiFinished = m.finished === 'TRUE' || m.finished === true || m.finished === 1 ||
+                        m.status === 'FT' || m.status === 'FINISHED' || m.status === 'AET' || m.status === 'PEN';
+    const apiLive = ['1H','2H','HT','ET','LIVE','IN_PLAY','INPLAY'].some(x => apiSt.includes(x));
 
-    const live = liveFlag;
-    if (live) isLive = true;
+    // Use kickoff time: >115 min ago = likely finished, <115 min = live, not started = skip
+    const kickoffMs = kickoffMap[t1+'|'+t2] || 0;
+    const minsElapsed = kickoffMs ? (now - kickoffMs) / 60000 : null;
+    const timeFinished = minsElapsed !== null && minsElapsed > 115;
+    const timeLive = minsElapsed !== null && minsElapsed >= 0 && minsElapsed <= 115;
+    const notStarted = minsElapsed !== null && minsElapsed < 0;
 
-    state.fixtureScores[t1+'|'+t2] = { s1, s2, final: finished, live: live };
+    const finished = apiFinished || timeFinished;
+    const live = !finished && (apiLive || timeLive);
+
+    // Skip if not started and API also shows no activity
+    if (notStarted && !apiFinished && !apiLive) return;
+    // Skip pure default 0-0 on unstarted games
+    if (!finished && !live) return;
+
+    state.fixtureScores[t1+'|'+t2] = { s1, s2, final: finished, live };
 
     if (state.teams[t1] && state.teams[t2]) {
       state.teams[t1].gd += (s1-s2);
@@ -771,6 +803,7 @@ function applyMatchData(matches) {
       }
     });
 
+    if (live) isLive = true;
     processed++;
     lastMatchStr = `${t1} ${s1}–${s2} ${t2}`;
   });
@@ -1412,7 +1445,7 @@ function renderGroups() {
 // ── INIT ─────────────────────────────────────────────────────────────────────
 recalcKOPoints();
 renderLeaderboard();
-// Clean out stale 0-0 non-final entries from previous bad syncs
+// Clean stale non-final/non-live entries on load
 if (state.fixtureScores) {
   Object.keys(state.fixtureScores).forEach(k => {
     const v = state.fixtureScores[k];
@@ -1420,6 +1453,8 @@ if (state.fixtureScores) {
   });
   persist();
 }
+// Auto-sync on every page load
+syncLiveResults();
 </script>
 </body>
 </html>
