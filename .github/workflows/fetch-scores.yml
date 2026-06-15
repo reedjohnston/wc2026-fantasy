@@ -14,32 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Fetch scores from worldcup26.ir
-        run: |
-          curl -s \
-            -H "User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36" \
-            -H "Accept: application/json, text/plain, */*" \
-            -H "Accept-Language: en-US,en;q=0.9" \
-            -H "Referer: https://worldcup26.ir/" \
-            -H "Origin: https://worldcup26.ir" \
-            --compressed \
-            "https://worldcup26.ir/get/games" \
-            -o scores_new.json
-          GAME_COUNT=$(python3 -c "import json; d=json.load(open('scores_new.json')); g=d if isinstance(d,list) else d.get('games',d.get('data',d.get('matches',[]))); print(len(g))" 2>/dev/null || echo "0")
-          echo "Got $GAME_COUNT games"
-          if [ "$GAME_COUNT" -gt "0" ]; then
-            mv scores_new.json scores.json
-            echo "scores.json updated"
-          else
-            echo "Invalid or empty response, keeping existing scores.json"
-            cat scores_new.json || true
-          fi
+      - name: Install dependencies
+        run: pip install cairosvg requests --quiet --break-system-packages
 
-      - name: Generate preview image with current standings
+      - name: Fetch scores and generate preview
         run: |
-          pip install cairosvg --quiet --break-system-packages
           python3 << 'PYEOF'
-          import json, math
+          import json, sys, os, requests
 
           MANAGERS = [
             {"name": "Brian",   "teams": ["Portugal","United States","Norway","Tunisia"]},
@@ -58,56 +39,99 @@ jobs:
             "Bosnia & Herzegovina": "Bosnia and Herzegovina",
             "USA": "United States",
             "Korea Republic": "South Korea",
+            "Curacao": "Curaçao",
           }
 
-          try:
-            with open("scores.json") as f:
-              data = json.load(f)
-            matches = data if isinstance(data, list) else data.get("games", data.get("data", data.get("matches", [])))
-          except:
-            matches = []
+          # ── Fetch scores ────────────────────────────────────────────────────
+          URLS = [
+            ("worldcup26.ir", "https://worldcup26.ir/get/games", {
+              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+              "Accept": "application/json, text/plain, */*",
+              "Referer": "https://worldcup26.ir/",
+              "Origin": "https://worldcup26.ir",
+            }),
+            ("openfootball", "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json", {}),
+          ]
 
-          # Compute points per team
+          matches = []
+          source = ""
+          for src, url, headers in URLS:
+            try:
+              r = requests.get(url, headers=headers, timeout=15)
+              r.raise_for_status()
+              data = r.json()
+              if src == "openfootball":
+                raw = data.get("matches", [])
+                matches = [
+                  {"home_team": m["team1"], "away_team": m["team2"],
+                   "home_score": m["score1"], "away_score": m["score2"],
+                   "finished": "TRUE"}
+                  for m in raw
+                  if m.get("group") and "score1" in m and "score2" in m
+                ]
+              else:
+                matches = data if isinstance(data, list) else data.get("games", data.get("data", data.get("matches", [])))
+              if matches:
+                source = src
+                print(f"Got {len(matches)} matches from {src}")
+                break
+            except Exception as e:
+              print(f"{src} failed: {e}")
+              continue
+
+          if not matches:
+            print("No data from any source, keeping existing files")
+            sys.exit(0)
+
+          # Save scores.json
+          with open("scores.json", "w") as f:
+            json.dump(matches, f)
+          print("scores.json written")
+
+          # ── Compute standings ───────────────────────────────────────────────
           team_pts = {}
+          team_gd = {}
           for m in matches:
             t1 = NAME_MAP.get(m.get("home_team",""), m.get("home_team",""))
             t2 = NAME_MAP.get(m.get("away_team",""), m.get("away_team",""))
             finished = str(m.get("finished","")).upper() == "TRUE"
-            if not finished: continue
-            s1 = int(m.get("home_score",0) or 0)
-            s2 = int(m.get("away_score",0) or 0)
-            if t1 not in team_pts: team_pts[t1] = 0
-            if t2 not in team_pts: team_pts[t2] = 0
-            if s1 > s2: team_pts[t1] += 3
+            if not finished:
+              continue
+            s1 = int(m.get("home_score") or 0)
+            s2 = int(m.get("away_score") or 0)
+            team_pts.setdefault(t1, 0); team_pts.setdefault(t2, 0)
+            team_gd.setdefault(t1, 0);  team_gd.setdefault(t2, 0)
+            team_gd[t1] += s1 - s2;     team_gd[t2] += s2 - s1
+            if s1 > s2:   team_pts[t1] += 3
             elif s2 > s1: team_pts[t2] += 3
-            else: team_pts[t1] += 1; team_pts[t2] += 1
+            else:          team_pts[t1] += 1; team_pts[t2] += 1
 
-          # Compute manager totals
           standings = []
           for m in MANAGERS:
             pts = sum(team_pts.get(t, 0) for t in m["teams"])
-            standings.append({"name": m["name"].upper(), "teams": m["teams"], "pts": pts})
-          standings.sort(key=lambda x: -x["pts"])
+            gd  = sum(team_gd.get(t, 0)  for t in m["teams"])
+            standings.append({"name": m["name"].upper(), "teams": m["teams"], "pts": pts, "gd": gd})
+          standings.sort(key=lambda x: (-x["pts"], -x["gd"]))
 
-          rank_colors = ["#FAC775","#D3D1C7","#F5C4B3"]
-
+          # ── Generate preview SVG ────────────────────────────────────────────
+          rank_colors = ["#FAC775", "#D3D1C7", "#F5C4B3"]
           rows = ""
           for i, m in enumerate(standings[:5]):
             y = 258 + i * 58
-            rank_col = rank_colors[i] if i < 3 else "rgba(255,255,255,0.35)"
-            name_col = "white" if i < 3 else "rgba(255,255,255,0.65)"
-            pts_str = str(m["pts"]) if m["pts"] > 0 else "—"
+            rc   = rank_colors[i] if i < 3 else "rgba(255,255,255,0.35)"
+            nc   = "white"           if i < 3 else "rgba(255,255,255,0.65)"
+            pts_str = str(m["pts"])  if m["pts"] > 0 else "—"
             teams_str = " · ".join(m["teams"])
             bg = 'fill="rgba(250,199,117,0.08)"' if i == 0 else 'fill="rgba(255,255,255,0.03)"'
             rows += f'''
-            <rect x="60" y="{y}" width="1080" height="52" rx="8" {bg}/>
-            <rect x="60" y="{y}" width="4" height="52" rx="2" fill="{rank_col}"/>
-            <text x="90" y="{y+34}" font-family="Arial Black, Arial, sans-serif" font-size="22" font-weight="900" fill="{rank_col}">{i+1}</text>
-            <text x="130" y="{y+34}" font-family="Arial Black, Arial, sans-serif" font-size="26" font-weight="900" fill="{name_col}">{m["name"]}</text>
-            <text x="360" y="{y+32}" font-family="Arial, sans-serif" font-size="15" fill="rgba(255,255,255,0.28)">{teams_str}</text>
-            <text x="1110" y="{y+34}" font-family="Arial Black, Arial, sans-serif" font-size="26" font-weight="900" fill="#1D9E75" text-anchor="end">{pts_str}</text>'''
+              <rect x="60" y="{y}" width="1080" height="52" rx="8" {bg}/>
+              <rect x="60" y="{y}" width="4" height="52" rx="2" fill="{rc}"/>
+              <text x="90"   y="{y+34}" font-family="Arial Black,Arial,sans-serif" font-size="22" font-weight="900" fill="{rc}">{i+1}</text>
+              <text x="130"  y="{y+34}" font-family="Arial Black,Arial,sans-serif" font-size="26" font-weight="900" fill="{nc}">{m["name"]}</text>
+              <text x="360"  y="{y+32}" font-family="Arial,sans-serif" font-size="15" fill="rgba(255,255,255,0.28)">{teams_str}</text>
+              <text x="1110" y="{y+34}" font-family="Arial Black,Arial,sans-serif" font-size="26" font-weight="900" fill="#1D9E75" text-anchor="end">{pts_str}</text>'''
 
-          svg = f'''<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
+          svg = f"""<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
                 <stop offset="0%" stop-color="#0a1a10"/>
@@ -116,18 +140,18 @@ jobs:
             </defs>
             <rect width="1200" height="630" fill="url(#bg)"/>
             <rect width="1200" height="5" fill="#1D9E75"/>
-            <text x="60" y="90" font-family="Arial Black, Arial, sans-serif" font-size="15" font-weight="900" fill="#1D9E75" letter-spacing="5">2026 FIFA WORLD CUP</text>
-            <text x="60" y="155" font-family="Arial Black, Arial, sans-serif" font-size="62" font-weight="900" fill="white" letter-spacing="-1">Fantasy Draft</text>
-            <text x="60" y="195" font-family="Arial, sans-serif" font-size="20" fill="rgba(255,255,255,0.4)">10 managers · 4 teams each · Live results</text>
+            <text x="60" y="90"  font-family="Arial Black,Arial,sans-serif" font-size="15" font-weight="900" fill="#1D9E75" letter-spacing="5">2026 FIFA WORLD CUP</text>
+            <text x="60" y="155" font-family="Arial Black,Arial,sans-serif" font-size="62" font-weight="900" fill="white">Fantasy Draft</text>
+            <text x="60" y="195" font-family="Arial,sans-serif" font-size="20" fill="rgba(255,255,255,0.4)">10 managers · 4 teams each · Live results</text>
             <rect x="60" y="218" width="1080" height="1" fill="rgba(255,255,255,0.1)"/>
-            <text x="60" y="248" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3">RANK</text>
-            <text x="130" y="248" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3">MANAGER</text>
-            <text x="1090" y="248" font-family="Arial, sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3" text-anchor="end">PTS</text>
+            <text x="60"   y="248" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3">RANK</text>
+            <text x="130"  y="248" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3">MANAGER</text>
+            <text x="1090" y="248" font-family="Arial,sans-serif" font-size="12" font-weight="700" fill="rgba(255,255,255,0.3)" letter-spacing="3" text-anchor="end">PTS</text>
             {rows}
-            <text x="60" y="578" font-family="Arial, sans-serif" font-size="14" fill="rgba(255,255,255,0.2)">+ {len(standings)-5} more managers · Visit link for live standings →</text>
-            <text x="1140" y="615" font-family="Arial, sans-serif" font-size="13" fill="rgba(255,255,255,0.2)" text-anchor="end">reedjohnston.github.io/wc2026-fantasy</text>
-            <text x="1120" y="175" font-family="Arial, sans-serif" font-size="130" fill="rgba(29,158,117,0.07)" text-anchor="middle">⚽</text>
-          </svg>'''
+            <text x="60"   y="578" font-family="Arial,sans-serif" font-size="14" fill="rgba(255,255,255,0.2)">+ {len(standings)-5} more managers · Visit link for live standings →</text>
+            <text x="1140" y="615" font-family="Arial,sans-serif" font-size="13" fill="rgba(255,255,255,0.2)" text-anchor="end">reedjohnston.github.io/wc2026-fantasy</text>
+            <text x="1120" y="175" font-family="Arial,sans-serif" font-size="130" fill="rgba(29,158,117,0.07)" text-anchor="middle">⚽</text>
+          </svg>"""
 
           with open("preview.svg", "w") as f:
             f.write(svg)
