@@ -134,6 +134,7 @@
   .team-name-cell{display:flex;align-items:center;gap:7px;}
   .team-flag{font-size:16px;line-height:1;flex-shrink:0;}
   .owner-tag{font-size:11px;background:var(--green-light);color:var(--green-dark);padding:1px 5px;border-radius:6px;font-weight:600;}
+  .fifa-rank-badge{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--surface2);padding:1px 5px;border-radius:5px;margin-left:5px;white-space:nowrap;}
   .w-input{width:36px;text-align:center;font-size:12px;padding:4px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;}
   .w-input:focus{outline:none;border-color:var(--gold);background:var(--scoreface);}
   .gd-input{width:44px !important;}
@@ -862,6 +863,27 @@ function flagHTML(t) {
   return c ? `<span class="fi fi-${c}" role="img" aria-label="${t} flag"></span>` : '';
 }
 
+// FIFA/Coca-Cola Men's World Ranking — official 11 June 2026 update (most
+// recent before the tournament; next update isn't until 20 July 2026, after
+// the World Cup concludes). Source: inside.fifa.com/fifa-world-ranking/men.
+const FIFA_RANKINGS = {
+  'Argentina': 1, 'Spain': 2, 'France': 3, 'England': 4, 'Portugal': 5,
+  'Brazil': 6, 'Netherlands': 7, 'Morocco': 8, 'Belgium': 9, 'Germany': 10,
+  'Croatia': 11, 'Colombia': 13, 'Senegal': 15, 'Mexico': 16, 'United States': 17,
+  'Uruguay': 16, 'Japan': 18, 'Switzerland': 19, 'Iran': 21, 'Turkey': 22,
+  'Ecuador': 23, 'Austria': 24, 'South Korea': 25, 'Australia': 27, 'Algeria': 28,
+  'Egypt': 29, 'Canada': 30, 'Norway': 31, 'Panama': 34, 'Ivory Coast': 33,
+  'Sweden': 38, 'Paraguay': 40, 'Czech Republic': 41, 'Scotland': 42, 'Tunisia': 46,
+  'DR Congo': 45, 'Uzbekistan': 50, 'Qatar': 55, 'Iraq': 56, 'South Africa': 60,
+  'Saudi Arabia': 61, 'Jordan': 63, 'Bosnia and Herzegovina': 64, 'Cape Verde': 67,
+  'Ghana': 73, 'Curaçao': 82, 'Haiti': 83, 'New Zealand': 85,
+};
+function fifaRank(t) { return FIFA_RANKINGS[t] || null; }
+function fifaRankBadge(t) {
+  const r = fifaRank(t);
+  return r ? `<span class="fifa-rank-badge" title="FIFA World Ranking">FIFA Rank: #${r}</span>` : '';
+}
+
 const OWNER = {};
 MANAGERS.forEach(m => m.teams.forEach(t => { OWNER[t] = m.name; }));
 const FANTASY_TEAMS = new Set(MANAGERS.flatMap(m => m.teams));
@@ -1277,9 +1299,9 @@ function renderNextUp() {
   el.innerHTML = `
     <div class="next-up-eyebrow">${eyebrow}</div>
     <div class="next-up-match">
-      <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span>${d.t1n}</span>${flagHTML(d.t1n)}${OWNER[d.t1n]?`<span class="fixture-owner-tag">${OWNER[d.t1n]}</span>`:''}</div>
+      <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span>${d.t1n}</span>${flagHTML(d.t1n)}${fifaRankBadge(d.t1n)}${OWNER[d.t1n]?`<span class="fixture-owner-tag">${OWNER[d.t1n]}</span>`:''}</div>
       <div class="next-up-mid">${mid}</div>
-      <div class="next-up-team t2">${OWNER[d.t2n]?`<span class="fixture-owner-tag">${OWNER[d.t2n]}</span>`:''} ${flagHTML(d.t2n)}<span>${d.t2n}</span>${mine2?'<span class="mine-dot"></span>':''}</div>
+      <div class="next-up-team t2">${OWNER[d.t2n]?`<span class="fixture-owner-tag">${OWNER[d.t2n]}</span>`:''} ${flagHTML(d.t2n)}<span>${d.t2n}</span>${fifaRankBadge(d.t2n)}${mine2?'<span class="mine-dot"></span>':''}</div>
     </div>
     <div class="next-up-meta">${m.group} · ${m.round}${venue?` · ${venue}`:''}`;
   if ((mine1 || mine2) && MY_MANAGER) {
@@ -2359,6 +2381,7 @@ function buildFixtureMatchHTML(m) {
       ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
       <span>${t1n}</span>
       <span>${flagHTML(t1n)}</span>
+      ${fifaRankBadge(t1n)}
       ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
     </div>
     ${scoreCell}
@@ -2366,6 +2389,7 @@ function buildFixtureMatchHTML(m) {
       ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
       <span>${flagHTML(t2n)}</span>
       <span>${t2n}</span>
+      ${fifaRankBadge(t2n)}
       ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
     </div>
   </div>
@@ -2432,6 +2456,7 @@ function renderFixtures() {
               ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
               <span>${t1n}</span>
               <span>${flagHTML(t1n)}</span>
+              ${fifaRankBadge(t1n)}
               ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -2444,6 +2469,7 @@ function renderFixtures() {
               ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
               <span>${flagHTML(t2n)}</span>
               <span>${t2n}</span>
+              ${fifaRankBadge(t2n)}
               ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
             </div>
           </div>`;
@@ -2550,6 +2576,7 @@ function renderFixturesByManager(grid) {
         ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
         <span>${t1n}</span>
         <span>${flagHTML(t1n)}</span>
+        ${fifaRankBadge(t1n)}
         ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -2562,6 +2589,7 @@ function renderFixturesByManager(grid) {
         ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
         <span>${flagHTML(t2n)}</span>
         <span>${t2n}</span>
+        ${fifaRankBadge(t2n)}
         ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
       </div>
     </div>`;
