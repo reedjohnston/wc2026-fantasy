@@ -1886,12 +1886,16 @@ function saveDailyRankSnap(ranks) {
 function updateRankMoves(prevFinishedCount, newFinishedCount, prevRanks) {
   const newRanks = computeRanks();
   let baseline = loadDailyRankSnap();
+
   if (!baseline) {
-    // First sync of the day — snapshot ranks BEFORE this sync's results land
-    baseline = prevRanks;
+    // First sync of the day. If prevRanks came from a genuinely empty board
+    // (no fixtures synced yet this session), it's not a meaningful baseline —
+    // seed with today's first real result instead so arrows aren't junk/zero.
+    const prevHadData = prevFinishedCount > 0;
+    baseline = prevHadData ? prevRanks : newRanks;
     saveDailyRankSnap(baseline);
   }
-  // Always recompute moves if we have a baseline — arrows should always reflect today's drift
+
   if (!baseline || Object.keys(baseline).length === 0) return;
   state.rankMoves = {};
   MANAGERS.forEach(m => {
