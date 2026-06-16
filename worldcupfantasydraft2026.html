@@ -1024,6 +1024,7 @@ function koGD(t) {
   let gd=0;
   Object.entries(state.koScores).forEach(([id,ms])=>{
     if(ms.gfA==null||ms.gfB==null) return; // only count fully-entered scorelines
+    if(!ms.winner) return; // live/in-progress knockout matches don't count toward GD yet
     const {tA,tB}=_bt[id]||{};
     if(tA===t) gd+=(ms.gfA||0)-(ms.gfB||0);
     else if(tB===t) gd+=(ms.gfB||0)-(ms.gfA||0);
