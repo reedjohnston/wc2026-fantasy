@@ -863,19 +863,20 @@ function flagHTML(t) {
   return c ? `<span class="fi fi-${c}" role="img" aria-label="${t} flag"></span>` : '';
 }
 
-// FIFA/Coca-Cola Men's World Ranking — official current update, verified directly
-// from inside.fifa.com/fifa-world-ranking/men (full ranked list, not a news
-// summary). Only includes the 48 teams competing in the 2026 World Cup.
+// FIFA/Coca-Cola Men's World Ranking — verified directly from the full ranked
+// list at inside.fifa.com/fifa-world-ranking/men (two screenshots covering the
+// complete 1-85 range needed for all 48 World Cup teams).
 const FIFA_RANKINGS = {
   'France': 1, 'Argentina': 2, 'Spain': 3, 'England': 4, 'Portugal': 5,
   'Brazil': 6, 'Morocco': 7, 'Netherlands': 8, 'Germany': 9, 'Belgium': 10,
   'Croatia': 11, 'Mexico': 13, 'Colombia': 14, 'United States': 15, 'Senegal': 16,
-  'Japan': 17, 'Uruguay': 18, 'Switzerland': 19, 'Norway': 27, 'Algeria': 28,
+  'Japan': 17, 'Uruguay': 18, 'Switzerland': 19, 'South Korea': 21, 'Australia': 22,
+  'Iran': 23, 'Austria': 24, 'Turkey': 26, 'Norway': 27, 'Algeria': 28,
   'Ecuador': 29, 'Egypt': 30, 'Ivory Coast': 31, 'Canada': 32, 'Panama': 34,
   'Sweden': 35, 'Scotland': 38, 'Paraguay': 42, 'Czech Republic': 43, 'DR Congo': 45,
-  'Tunisia': 56, 'Qatar': 49, 'Uzbekistan': 50, 'Iraq': 60, 'South Africa': 61,
-  'Bosnia and Herzegovina': 63, 'Cape Verde': 64, 'Jordan': 65, 'Ghana': 73,
-  'New Zealand': 82, 'Curaçao': 83, 'Haiti': 85,
+  'Qatar': 49, 'Uzbekistan': 50, 'Tunisia': 56, 'Saudi Arabia': 59, 'Iraq': 60,
+  'South Africa': 61, 'Bosnia and Herzegovina': 63, 'Cape Verde': 64, 'Jordan': 65,
+  'Ghana': 73, 'New Zealand': 82, 'Curaçao': 83, 'Haiti': 85,
 };
 function fifaRank(t) { return FIFA_RANKINGS[t] || null; }
 function fifaRankBadge(t) {
