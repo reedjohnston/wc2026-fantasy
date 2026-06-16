@@ -1709,7 +1709,7 @@ async function fetchFromESPN() {
                 : 'NS';
     const isGroup = Date.parse(e.date) < GROUP_STAGE_END_UTC;
     return {
-      fixture: { status: { short }, clock },
+      fixture: { status: { short }, clock, date: e.date },
       league:  { round: isGroup ? 'Group Stage' : 'Knockout' },
       teams:   { home: { name: home.team?.displayName || '' }, away: { name: away.team?.displayName || '' } },
       goals:   { home: parseInt(home.score) || 0, away: parseInt(away.score) || 0 },
@@ -1788,6 +1788,9 @@ function syncKnockoutFromApi(allFixtures) {
         ms.pensA = null; ms.pensB = null;
         ms.winner = gfA > gfB ? 'A' : gfB > gfA ? 'B' : null;
       }
+      if (ms.winner && !ms.completedAt) {
+        ms.completedAt = f.fixture.date ? Date.parse(f.fixture.date) : Date.now();
+      }
     }
     // LIVE (not done): leave ms.winner untouched. A genuinely undecided match has
     // no winner yet; a finished match that briefly re-reads as live keeps its
@@ -1852,16 +1855,78 @@ function loadDailyRankSnap() {
 function saveDailyRankSnap(ranks) {
   try { localStorage.setItem(RANK_SNAP_STORE, JSON.stringify({ date: rankDayStr(), ranks })); } catch(e) {}
 }
+
+// Get the UTC timestamp of the most recent 6am-Pacific boundary (the start of
+// today's rank-day). Used to split "this rank-day's results" from "everything
+// that happened before" — deterministic from the calendar alone, so every
+// device computes the exact same cutoff regardless of when it happens to sync.
+function rankDayBoundaryUTC() {
+  const now = new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', hour12: false,
+  }).formatToParts(now);
+  const get = t => parts.find(p => p.type === t).value;
+  let y = parseInt(get('year')), mo = parseInt(get('month')), d = parseInt(get('day'));
+  const hour = parseInt(get('hour'));
+  if (hour < 6) { const r = new Date(Date.UTC(y, mo-1, d)); r.setUTCDate(r.getUTCDate()-1); y=r.getUTCFullYear(); mo=r.getUTCMonth()+1; d=r.getUTCDate(); }
+  // 6am Pacific in UTC: PST (UTC-8) -> 14:00 UTC, PDT (UTC-7) -> 13:00 UTC.
+  // Determine offset by checking what the Pacific wall-clock hour reads for a
+  // known UTC instant on this date, rather than hardcoding DST date ranges.
+  const probe = new Date(Date.UTC(y, mo-1, d, 13, 0)); // try PDT first
+  const probeHour = parseInt(new Intl.DateTimeFormat('en-US', { timeZone:'America/Los_Angeles', hour:'2-digit', hour12:false }).format(probe));
+  const utcHourFor6am = probeHour === 6 ? 13 : 14;
+  return Date.UTC(y, mo-1, d, utcHourFor6am, 0);
+}
+
+// Deterministic baseline: ranks as they stood at the start of today's rank-day,
+// computed from match results alone — every device (mobile, desktop, anyone's
+// browser) derives the identical snapshot from the same synced data, so arrows
+// match everywhere instead of depending on per-device sync timing.
+function computeBaselineRanks() {
+  const boundary = rankDayBoundaryUTC();
+  const fs = state.fixtureScores || {};
+  const savedTeams = JSON.parse(JSON.stringify(state.teams));
+  const savedKo = JSON.parse(JSON.stringify(state.koScores));
+
+  // Zero out and rebuild W/D/L/GD using only matches completed before the boundary.
+  ALL_TEAMS.forEach(t => { if (state.teams[t]) { state.teams[t].w=0; state.teams[t].d=0; state.teams[t].l=0; state.teams[t].gd=0; } });
+  Object.entries(fs).forEach(([pair, sc]) => {
+    if (sc.fin === false) return;
+    if (sc.completedAt && sc.completedAt >= boundary) return; // happened today — exclude from baseline
+    const i = pair.indexOf('|'); const t1 = pair.slice(0,i), t2 = pair.slice(i+1);
+    if (!state.teams[t1] || !state.teams[t2]) return;
+    const s1 = sc.s1||0, s2 = sc.s2||0;
+    state.teams[t1].gd += s1-s2; state.teams[t2].gd += s2-s1;
+    if (s1>s2) { state.teams[t1].w++; state.teams[t2].l++; }
+    else if (s2>s1) { state.teams[t2].w++; state.teams[t1].l++; }
+    else { state.teams[t1].d++; state.teams[t2].d++; }
+  });
+  // Exclude knockout results decided today, same boundary rule.
+  Object.keys(state.koScores).forEach(id => {
+    const ms = state.koScores[id];
+    if (ms && ms.completedAt && ms.completedAt >= boundary) state.koScores[id] = {};
+  });
+  recalcKOPoints();
+
+  const baseline = computeRanks();
+
+  // Restore real state — this function must have zero lasting side effects.
+  state.teams = savedTeams;
+  state.koScores = savedKo;
+  recalcKOPoints();
+
+  return baseline;
+}
+
 function updateRankMoves(prevFinishedCount, newFinishedCount, prevRanks) {
   const newRanks = computeRanks();
   let baseline = loadDailyRankSnap();
 
   if (!baseline) {
-    // First sync of the day. If prevRanks came from a genuinely empty board
-    // (no fixtures synced yet this session), it's not a meaningful baseline —
-    // seed with today's first real result instead so arrows aren't junk/zero.
-    const prevHadData = prevFinishedCount > 0;
-    baseline = prevHadData ? prevRanks : newRanks;
+    // Deterministic from synced match data — same on every device, so mobile
+    // and desktop always agree without needing to sync at the same moment.
+    baseline = computeBaselineRanks();
     saveDailyRankSnap(baseline);
   }
 
@@ -1939,7 +2004,8 @@ async function syncLiveResults() {
         const fin = KO_STATUS.done.includes(f.fixture.status.short);
         const live = KO_STATUS.live.includes(f.fixture.status.short);
         const clock = f.fixture.clock || '';
-        state.fixtureScores[t1+'|'+t2] = { s1, s2, fin, live, clock };
+        const completedAt = f.fixture.date ? Date.parse(f.fixture.date) : Date.now();
+        state.fixtureScores[t1+'|'+t2] = { s1, s2, fin, live, clock, completedAt };
         processed++;
       });
       rebuildGroupStats();
@@ -1984,7 +2050,9 @@ async function syncLiveResults() {
       finished.forEach(m => {
         const t1 = API_NAME_MAP[m.team1] || m.team1;
         const t2 = API_NAME_MAP[m.team2] || m.team2;
-        state.fixtureScores[t1+'|'+t2] = { s1: m.score1, s2: m.score2, fin: true };
+        const fx = GROUP_FIXTURES.find(g => (g.t1===m.team1&&g.t2===m.team2)||(g.t1===m.team2&&g.t2===m.team1));
+        const completedAt = fx ? parseKickoffMs(fx.date, fx.time) : Date.now();
+        state.fixtureScores[t1+'|'+t2] = { s1: m.score1, s2: m.score2, fin: true, completedAt };
         processed++;
       });
       rebuildGroupStats();
