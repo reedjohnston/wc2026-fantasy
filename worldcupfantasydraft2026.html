@@ -224,10 +224,13 @@
   .ko-score-input{width:30px;text-align:center;font-size:13px;font-weight:500;padding:3px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;flex-shrink:0;}
   .ko-score-input:focus{outline:none;border-color:var(--gold);background:var(--scoreface);box-shadow:0 0 0 2px var(--gold-glow);}
   .ko-score-input.winner-score{background:var(--green-light);border-color:var(--green-mid);color:var(--green-dark);font-weight:600;}
+  .ko-score-display{display:inline-flex;align-items:center;justify-content:center;width:30px;text-align:center;font-size:13px;font-weight:500;padding:3px 2px;border-radius:5px;background:var(--surface2);color:var(--text);flex-shrink:0;}
+  .ko-score-display.winner-score{background:var(--green-light);color:var(--green-dark);font-weight:600;}
   .ko-vs-divider{text-align:center;padding:2px 8px;font-size:11px;color:var(--text-muted);font-weight:500;letter-spacing:0.04em;background:var(--surface2);border-bottom:0.5px solid var(--border);}
   .ko-pens-row{padding:4px 10px 5px;font-size:11px;color:var(--text-muted);display:flex;align-items:center;gap:6px;border-top:0.5px solid var(--border);background:var(--surface2);}
   .ko-pens-input{width:26px;text-align:center;font-size:11px;padding:2px;border-radius:4px;border:0.5px solid var(--border-strong);background:var(--surface);color:var(--text);font-family:'DM Sans',sans-serif;}
   .ko-pens-input:focus{outline:none;border-color:var(--green);}
+  .ko-pens-display{display:inline-flex;align-items:center;justify-content:center;width:26px;text-align:center;font-size:11px;padding:2px;border-radius:4px;background:var(--surface);color:var(--text);}
   .ko-tbd{font-size:12px;color:var(--text-muted);padding:10px;font-style:italic;}
   .ko-winner-badge{font-size:11px;background:var(--green);color:white;padding:1px 6px;border-radius:8px;font-weight:500;flex-shrink:0;}
 
@@ -705,8 +708,7 @@
 
   <div id="tab-knockout" class="section">
     <div class="actions-bar">
-      <p>Enter the score for each match. Tied scores reveal a penalty row. The higher scorer (or pen winner) advances. All goals count toward GD.</p>
-      <button class="save-all-btn" onclick="saveKnockout()">Save &amp; Update Leaderboard</button>
+      <p>Bracket and scores update automatically from live results. A match's score only counts toward goal differential once it's officially final.</p>
     </div>
     <div id="ko-content"></div>
   </div>
@@ -1525,21 +1527,21 @@ function buildMatchCard(id, label, desc, tA, tB) {
       <span class="ko-team-name">${flagHTML(tA)} ${tA}</span>
       ${FANTASY_TEAMS.has(tA)?`<span class="ko-owner-tag">${OWNER[tA]}</span>`:''}
       ${winA?`<span class="ko-winner-badge">W</span>`:''}
-      <input class="ko-score-input ${winA?'winner-score':''}" type="number" min="0" id="gfA_${id}" value="${gfA}" placeholder="–" aria-label="${tA} goals" oninput="scoreChanged('${id}')">
+      <span class="ko-score-display ${winA?'winner-score':''}">${gfA!==''?gfA:'–'}</span>
     </div>
     <div class="ko-vs-divider">vs</div>
     <div class="ko-score-row ${winB?'winner-row':''}">
       <span class="ko-team-name">${flagHTML(tB)} ${tB}</span>
       ${FANTASY_TEAMS.has(tB)?`<span class="ko-owner-tag">${OWNER[tB]}</span>`:''}
       ${winB?`<span class="ko-winner-badge">W</span>`:''}
-      <input class="ko-score-input ${winB?'winner-score':''}" type="number" min="0" id="gfB_${id}" value="${gfB}" placeholder="–" aria-label="${tB} goals" oninput="scoreChanged('${id}')">
+      <span class="ko-score-display ${winB?'winner-score':''}">${gfB!==''?gfB:'–'}</span>
     </div>
     ${showPens?`
     <div class="ko-pens-row">
       <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Pens:</span>
-      <input class="ko-pens-input" type="number" min="0" id="pensA_${id}" value="${ms.pensA??''}" placeholder="–" aria-label="${tA} penalty shootout score" oninput="pensChanged('${id}')">
+      <span class="ko-pens-display">${ms.pensA??'–'}</span>
       <span style="font-size:11px;color:var(--text-muted);padding:0 2px">–</span>
-      <input class="ko-pens-input" type="number" min="0" id="pensB_${id}" value="${ms.pensB??''}" placeholder="–" aria-label="${tB} penalty shootout score" oninput="pensChanged('${id}')">
+      <span class="ko-pens-display">${ms.pensB??'–'}</span>
       <span style="font-size:11px;color:var(--text-muted);margin-left:4px">(pens)</span>
     </div>`:''}`;
   return card;
@@ -1559,40 +1561,6 @@ function renderKnockoutPreservingFocus() {
       try { const v = el.value; el.value = ''; el.value = v; } catch(e) {}
     }
   }
-}
-
-function scoreChanged(id) {
-  const ms=state.koScores[id]||{}; state.koScores[id]=ms;
-  const elA=document.getElementById('gfA_'+id), elB=document.getElementById('gfB_'+id);
-  const gfA=elA&&elA.value!==''?parseInt(elA.value):null;
-  const gfB=elB&&elB.value!==''?parseInt(elB.value):null;
-  ms.gfA=gfA; ms.gfB=gfB; // keep null until entered so GD ignores half-filled scores
-  if(gfA!==null&&gfB!==null) {
-    if(gfA>gfB) { ms.winner='A'; ms.pensA=null; ms.pensB=null; }
-    else if(gfB>gfA) { ms.winner='B'; ms.pensA=null; ms.pensB=null; }
-    else { ms.winner=null; }
-  }
-  recalcKOPoints(); renderKnockoutPreservingFocus();
-}
-
-function pensChanged(id) {
-  const ms=state.koScores[id]||{}; state.koScores[id]=ms;
-  const pA=document.getElementById('pensA_'+id)?.value;
-  const pB=document.getElementById('pensB_'+id)?.value;
-  ms.pensA=pA!==''&&pA!==undefined?parseInt(pA):null;
-  ms.pensB=pB!==''&&pB!==undefined?parseInt(pB):null;
-  if(ms.pensA!==null&&ms.pensB!==null) {
-    if(ms.pensA>ms.pensB) ms.winner='A';
-    else if(ms.pensB>ms.pensA) ms.winner='B';
-    else ms.winner=null;
-  }
-  recalcKOPoints(); renderKnockoutPreservingFocus();
-}
-
-function saveKnockout() {
-  recalcKOPoints(); persist();
-  const btn=document.querySelector('#tab-knockout .save-all-btn');
-  if(btn){ btn.textContent='Saved!'; setTimeout(()=>btn.textContent='Save & Update Leaderboard',1400); }
 }
 
 // ── LIVE SYNC ─────────────────────────────────────────────────────────────────
