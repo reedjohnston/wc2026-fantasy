@@ -863,20 +863,19 @@ function flagHTML(t) {
   return c ? `<span class="fi fi-${c}" role="img" aria-label="${t} flag"></span>` : '';
 }
 
-// FIFA/Coca-Cola Men's World Ranking — official 11 June 2026 update (most
-// recent before the tournament; next update isn't until 20 July 2026, after
-// the World Cup concludes). Source: inside.fifa.com/fifa-world-ranking/men.
+// FIFA/Coca-Cola Men's World Ranking — official current update, verified directly
+// from inside.fifa.com/fifa-world-ranking/men (full ranked list, not a news
+// summary). Only includes the 48 teams competing in the 2026 World Cup.
 const FIFA_RANKINGS = {
-  'Argentina': 1, 'Spain': 2, 'France': 3, 'England': 4, 'Portugal': 5,
-  'Brazil': 6, 'Netherlands': 7, 'Morocco': 8, 'Belgium': 9, 'Germany': 10,
-  'Croatia': 11, 'Colombia': 13, 'Senegal': 15, 'Mexico': 16, 'United States': 17,
-  'Uruguay': 16, 'Japan': 18, 'Switzerland': 19, 'Iran': 21, 'Turkey': 22,
-  'Ecuador': 23, 'Austria': 24, 'South Korea': 25, 'Australia': 27, 'Algeria': 28,
-  'Egypt': 29, 'Canada': 30, 'Norway': 31, 'Panama': 34, 'Ivory Coast': 33,
-  'Sweden': 38, 'Paraguay': 40, 'Czech Republic': 41, 'Scotland': 42, 'Tunisia': 46,
-  'DR Congo': 45, 'Uzbekistan': 50, 'Qatar': 55, 'Iraq': 56, 'South Africa': 60,
-  'Saudi Arabia': 61, 'Jordan': 63, 'Bosnia and Herzegovina': 64, 'Cape Verde': 67,
-  'Ghana': 73, 'Curaçao': 82, 'Haiti': 83, 'New Zealand': 85,
+  'France': 1, 'Argentina': 2, 'Spain': 3, 'England': 4, 'Portugal': 5,
+  'Brazil': 6, 'Morocco': 7, 'Netherlands': 8, 'Germany': 9, 'Belgium': 10,
+  'Croatia': 11, 'Mexico': 13, 'Colombia': 14, 'United States': 15, 'Senegal': 16,
+  'Japan': 17, 'Uruguay': 18, 'Switzerland': 19, 'Norway': 27, 'Algeria': 28,
+  'Ecuador': 29, 'Egypt': 30, 'Ivory Coast': 31, 'Canada': 32, 'Panama': 34,
+  'Sweden': 35, 'Scotland': 38, 'Paraguay': 42, 'Czech Republic': 43, 'DR Congo': 45,
+  'Tunisia': 56, 'Qatar': 49, 'Uzbekistan': 50, 'Iraq': 60, 'South Africa': 61,
+  'Bosnia and Herzegovina': 63, 'Cape Verde': 64, 'Jordan': 65, 'Ghana': 73,
+  'New Zealand': 82, 'Curaçao': 83, 'Haiti': 85,
 };
 function fifaRank(t) { return FIFA_RANKINGS[t] || null; }
 function fifaRankBadge(t) {
