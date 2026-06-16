@@ -1850,13 +1850,38 @@ function syncKnockoutFromApi(allFixtures) {
 // Snapshot ranks once per calendar day. Arrows show drift from morning baseline,
 // not from previous sync — they only move when a completed match shifts the table.
 const RANK_SNAP_STORE = 'wc2026_ranksnap';
-function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+// "Rank day" rolls over at 6:00 AM Pacific, not local midnight — so every
+// manager (regardless of their own timezone) sees the same reset point and
+// the same arrows. Returns a YYYY-MM-DD key identifying that Pacific rank-day.
+function rankDayStr() {
+  const now = new Date();
+  // Get the current wall-clock time in Los Angeles via Intl, which already
+  // accounts for PST/PDT — no manual DST math needed.
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(now);
+  const get = t => parts.find(p => p.type === t).value;
+  let y = parseInt(get('year')), mo = parseInt(get('month')), d = parseInt(get('day'));
+  const hour = parseInt(get('hour'));
+
+  // Before 6am Pacific, we're still "yesterday's" rank-day — roll back one day.
+  if (hour < 6) {
+    const rolled = new Date(Date.UTC(y, mo - 1, d));
+    rolled.setUTCDate(rolled.getUTCDate() - 1);
+    y = rolled.getUTCFullYear(); mo = rolled.getUTCMonth() + 1; d = rolled.getUTCDate();
+  }
+  return `${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+
 function loadDailyRankSnap() {
-  try { const r = JSON.parse(localStorage.getItem(RANK_SNAP_STORE)); if (r && r.date === todayStr()) return r.ranks; } catch(e) {}
+  try { const r = JSON.parse(localStorage.getItem(RANK_SNAP_STORE)); if (r && r.date === rankDayStr()) return r.ranks; } catch(e) {}
   return null;
 }
 function saveDailyRankSnap(ranks) {
-  try { localStorage.setItem(RANK_SNAP_STORE, JSON.stringify({ date: todayStr(), ranks })); } catch(e) {}
+  try { localStorage.setItem(RANK_SNAP_STORE, JSON.stringify({ date: rankDayStr(), ranks })); } catch(e) {}
 }
 function updateRankMoves(prevFinishedCount, newFinishedCount, prevRanks) {
   const newRanks = computeRanks();
@@ -2402,7 +2427,7 @@ function scrollFixturesToToday() {
   const cards = [...grid.querySelectorAll('.fixture-card[data-dates]')];
   if (!cards.length) return;
 
-  const todayStr0 = todayStr();
+  const todayStr0 = new Date().toISOString().slice(0, 10);
   let target = cards.find(c => c.dataset.dates.split(',').includes(todayStr0));
 
   if (!target) {
