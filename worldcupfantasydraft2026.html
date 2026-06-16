@@ -2345,6 +2345,7 @@ function renderFixtures() {
         .sort((a, b) => (a.date + a.time) < (b.date + b.time) ? -1 : 1);
       const card = document.createElement('div');
       card.className = 'fixture-card';
+      card.dataset.dates = matches.map(m => m.date).join(',');
       // Get date range for this matchday
       const dates = [...new Set(matches.map(m => m.date))];
       const dateLabel = dates.map(d => new Date(d+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})).join(' & ');
@@ -2384,6 +2385,45 @@ function renderFixtures() {
       });
       card.innerHTML = html;
       grid.appendChild(card);
+    });
+  }
+
+  scrollFixturesToToday();
+}
+
+// Scroll the Group Schedule view to the card closest to today's date.
+// Only runs in the By Matchday view (cards carry a data-dates attribute);
+// picks the card containing today, or the nearest upcoming one if today
+// has no matches, or the most recent past one if the tournament's done.
+function scrollFixturesToToday() {
+  if (fixtureSort !== 'matchday') return;
+  const grid = document.getElementById('fixtures-grid');
+  if (!grid) return;
+  const cards = [...grid.querySelectorAll('.fixture-card[data-dates]')];
+  if (!cards.length) return;
+
+  const todayStr0 = todayStr();
+  let target = cards.find(c => c.dataset.dates.split(',').includes(todayStr0));
+
+  if (!target) {
+    // No matches today — find the closest upcoming matchday card
+    let best = null, bestDiff = Infinity;
+    cards.forEach(c => {
+      c.dataset.dates.split(',').forEach(d => {
+        const diff = new Date(d) - new Date(todayStr0);
+        if (diff >= 0 && diff < bestDiff) { bestDiff = diff; best = c; }
+      });
+    });
+    target = best;
+  }
+  if (!target) {
+    // Tournament fully in the past — jump to the last card
+    target = cards[cards.length - 1];
+  }
+
+  if (target) {
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     });
   }
 }
