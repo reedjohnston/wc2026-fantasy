@@ -295,20 +295,28 @@
     .team-flag { font-size:14px; }
     .owner-tag { display:none; }
 
-    /* Fixtures — 1 column */
+    /* Fixtures — 1 column, stacked team rows instead of cramped 3-col grid */
     .fixtures-grid { grid-template-columns:1fr !important; gap:10px; }
     .sort-toggle { width:100%; }
     .sort-btn { flex:1; text-align:center; }
-    .fixture-row { padding:8px 10px; gap:4px; }
-    .fixture-team { font-size:12px; gap:3px; }
-    .fixture-score { font-size:13px; min-width:38px; }
-    .fixture-score.pending { font-size:11px; }
+    .fixture-row { grid-template-columns:1fr; gap:6px; padding:10px 12px; }
+    .fixture-team { font-size:13px; white-space:normal; overflow:visible; text-overflow:clip; gap:6px; }
+    .fixture-team.home, .fixture-team.away { justify-content:flex-start !important; flex-wrap:wrap; }
+    .fixture-score { font-size:14px; min-width:0; }
+    .fixture-score.pending { font-size:12px; }
+    .fixture-row > div:nth-child(2) { padding:2px 0; }
+    .fifa-rank-badge { font-size:9px; padding:1px 4px; margin-left:3px; }
+    .fixture-owner-tag, .fixture-group-pill, .ko-owner-tag { font-size:10px; padding:1px 5px; }
+    .fixture-venue, .fixture-venue-inline { font-size:10px; white-space:normal; }
 
     /* Knockout — full width cards */
     .ko-grid { gap:8px; }
     .ko-match { min-width:0; max-width:100%; flex:1 1 100%; }
-    .ko-score-row { padding:8px 10px; }
-    .ko-team-name { font-size:12px; }
+    .ko-score-row { display:flex; flex-wrap:wrap; align-items:center; padding:9px 10px; gap:4px 6px; }
+    .ko-team-name { font-size:12px; white-space:normal; overflow:visible; text-overflow:clip; flex:1 1 auto; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
+    .ko-owner-tag { flex-shrink:0; }
+    .ko-winner-badge { flex-shrink:0; }
+    .ko-score-display, .ko-score-input { margin-left:auto; }
     .ko-score-input { width:36px; font-size:14px; padding:5px 2px; }
 
     /* Rules */
@@ -393,9 +401,15 @@
   .next-up-kick{font-size:12px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.3;}
   .next-up-meta{font-size:11px;color:rgba(255,255,255,0.55);text-align:center;margin-top:7px;position:relative;letter-spacing:0.03em;}
   @media(max-width:600px){
-    .next-up-team{font-size:17px;}
-    .next-up-team .fi{font-size:16px;}
-    .next-up-score{font-size:24px;}
+    .next-up{padding:14px 12px;}
+    .next-up-match{flex-direction:column;gap:10px;align-items:stretch;}
+    .next-up-team{font-size:15px;white-space:normal;flex-wrap:wrap;justify-content:center !important;gap:6px;line-height:1.3;}
+    .next-up-team.t1, .next-up-team.t2{flex:none;}
+    .next-up-team .fi{font-size:18px;flex-shrink:0;}
+    .next-up-mid{min-width:0;order:0;}
+    .next-up-team.t2{order:1;}
+    .next-up-score{font-size:26px;}
+    .fifa-rank-badge{font-size:9px;padding:1px 4px;}
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
