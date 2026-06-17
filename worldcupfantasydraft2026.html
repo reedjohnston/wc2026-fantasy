@@ -135,6 +135,8 @@
   .team-flag{font-size:16px;line-height:1;flex-shrink:0;}
   .owner-tag{font-size:11px;background:var(--green-light);color:var(--green-dark);padding:1px 5px;border-radius:6px;font-weight:600;}
   .fifa-rank-badge{font-family:'DM Mono',monospace;font-size:10px;font-weight:600;color:var(--text-muted);background:var(--surface2);padding:1px 5px;border-radius:5px;margin-left:5px;white-space:nowrap;}
+  .team-name-rank-stack{display:inline-flex;flex-direction:column;align-items:center;gap:1px;}
+  .team-name-rank-stack .fifa-rank-badge{margin-left:0;}
   .w-input{width:36px;text-align:center;font-size:12px;padding:4px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;}
   .w-input:focus{outline:none;border-color:var(--gold);background:var(--scoreface);}
   .gd-input{width:44px !important;}
@@ -295,28 +297,21 @@
     .team-flag { font-size:14px; }
     .owner-tag { display:none; }
 
-    /* Fixtures — 1 column, stacked team rows instead of cramped 3-col grid */
+    /* Fixtures — 1 column */
     .fixtures-grid { grid-template-columns:1fr !important; gap:10px; }
     .sort-toggle { width:100%; }
     .sort-btn { flex:1; text-align:center; }
-    .fixture-row { grid-template-columns:1fr; gap:6px; padding:10px 12px; }
-    .fixture-team { font-size:13px; white-space:normal; overflow:visible; text-overflow:clip; gap:6px; }
-    .fixture-team.home, .fixture-team.away { justify-content:flex-start !important; flex-wrap:wrap; }
-    .fixture-score { font-size:14px; min-width:0; }
-    .fixture-score.pending { font-size:12px; }
-    .fixture-row > div:nth-child(2) { padding:2px 0; }
-    .fifa-rank-badge { font-size:9px; padding:1px 4px; margin-left:3px; }
-    .fixture-owner-tag, .fixture-group-pill, .ko-owner-tag { font-size:10px; padding:1px 5px; }
-    .fixture-venue, .fixture-venue-inline { font-size:10px; white-space:normal; }
+    .fixture-row { padding:8px 10px; gap:4px; }
+    .fixture-team { font-size:12px; gap:3px; }
+    .fixture-score { font-size:13px; min-width:38px; }
+    .fixture-score.pending { font-size:11px; }
+    .fifa-rank-badge { font-size:9px; padding:0px 4px; }
 
     /* Knockout — full width cards */
     .ko-grid { gap:8px; }
     .ko-match { min-width:0; max-width:100%; flex:1 1 100%; }
-    .ko-score-row { display:flex; flex-wrap:wrap; align-items:center; padding:9px 10px; gap:4px 6px; }
-    .ko-team-name { font-size:12px; white-space:normal; overflow:visible; text-overflow:clip; flex:1 1 auto; min-width:0; display:flex; flex-wrap:wrap; align-items:center; gap:4px; }
-    .ko-owner-tag { flex-shrink:0; }
-    .ko-winner-badge { flex-shrink:0; }
-    .ko-score-display, .ko-score-input { margin-left:auto; }
+    .ko-score-row { padding:8px 10px; }
+    .ko-team-name { font-size:12px; }
     .ko-score-input { width:36px; font-size:14px; padding:5px 2px; }
 
     /* Rules */
@@ -401,15 +396,10 @@
   .next-up-kick{font-size:12px;color:rgba(255,255,255,0.7);text-align:center;line-height:1.3;}
   .next-up-meta{font-size:11px;color:rgba(255,255,255,0.55);text-align:center;margin-top:7px;position:relative;letter-spacing:0.03em;}
   @media(max-width:600px){
-    .next-up{padding:14px 12px;}
-    .next-up-match{flex-direction:column;gap:10px;align-items:stretch;}
-    .next-up-team{font-size:15px;white-space:normal;flex-wrap:wrap;justify-content:center !important;gap:6px;line-height:1.3;}
-    .next-up-team.t1, .next-up-team.t2{flex:none;}
-    .next-up-team .fi{font-size:18px;flex-shrink:0;}
-    .next-up-mid{min-width:0;order:0;}
-    .next-up-team.t2{order:1;}
-    .next-up-score{font-size:26px;}
-    .fifa-rank-badge{font-size:9px;padding:1px 4px;}
+    .next-up-team{font-size:17px;}
+    .next-up-team .fi{font-size:16px;}
+    .next-up-score{font-size:24px;}
+    .fifa-rank-badge{font-size:9px;padding:0px 4px;}
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -1313,9 +1303,9 @@ function renderNextUp() {
   el.innerHTML = `
     <div class="next-up-eyebrow">${eyebrow}</div>
     <div class="next-up-match">
-      <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span>${d.t1n}</span>${flagHTML(d.t1n)}${fifaRankBadge(d.t1n)}${OWNER[d.t1n]?`<span class="fixture-owner-tag">${OWNER[d.t1n]}</span>`:''}</div>
+      <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span class="team-name-rank-stack" style="align-items:flex-end"><span>${d.t1n}</span>${fifaRankBadge(d.t1n)}</span>${flagHTML(d.t1n)}${OWNER[d.t1n]?`<span class="fixture-owner-tag">${OWNER[d.t1n]}</span>`:''}</div>
       <div class="next-up-mid">${mid}</div>
-      <div class="next-up-team t2">${OWNER[d.t2n]?`<span class="fixture-owner-tag">${OWNER[d.t2n]}</span>`:''} ${flagHTML(d.t2n)}<span>${d.t2n}</span>${fifaRankBadge(d.t2n)}${mine2?'<span class="mine-dot"></span>':''}</div>
+      <div class="next-up-team t2">${OWNER[d.t2n]?`<span class="fixture-owner-tag">${OWNER[d.t2n]}</span>`:''} ${flagHTML(d.t2n)}<span class="team-name-rank-stack"><span>${d.t2n}</span>${fifaRankBadge(d.t2n)}</span>${mine2?'<span class="mine-dot"></span>':''}</div>
     </div>
     <div class="next-up-meta">${m.group} · ${m.round}${venue?` · ${venue}`:''}`;
   if ((mine1 || mine2) && MY_MANAGER) {
@@ -2275,77 +2265,77 @@ function localKickoff(date, time) {
 
 const FIXTURE_VENUES = {
   'Mexico|South Africa': 'Mexico City, Mexico',
-  'South Korea|Czech Republic': 'Guadalajara, Mexico',
-  'Czech Republic|South Africa': 'Monterrey, Mexico',
-  'Mexico|South Korea': 'Mexico City, Mexico',
-  'Czech Republic|Mexico': 'Guadalajara, Mexico',
-  'South Africa|South Korea': 'Monterrey, Mexico',
-  'Canada|Bosnia and Herzegovina': 'Toronto, Canada',
-  'Qatar|Switzerland': 'San Francisco, USA',
-  'Switzerland|Bosnia and Herzegovina': 'Seattle, USA',
-  'Canada|Qatar': 'Kansas City, USA',
-  'Switzerland|Canada': 'Los Angeles, USA',
-  'Bosnia and Herzegovina|Qatar': 'Dallas, USA',
-  'Brazil|Morocco': 'New York/NJ, USA',
-  'Haiti|Scotland': 'Boston, USA',
-  'Scotland|Morocco': 'Atlanta, USA',
-  'Brazil|Haiti': 'Miami, USA',
-  'Scotland|Brazil': 'New York/NJ, USA',
-  'Morocco|Haiti': 'Boston, USA',
-  'United States|Paraguay': 'Los Angeles, USA',
+  'South Korea|Czech Republic': 'Zapopan, Mexico',
+  'Canada|Bosnia & Herzegovina': 'Toronto, Canada',
+  'USA|Paraguay': 'Inglewood, California, USA',
+  'Qatar|Switzerland': 'Santa Clara, California, USA',
+  'Brazil|Morocco': 'East Rutherford, New Jersey, USA',
+  'Haiti|Scotland': 'Foxborough, Massachusetts, USA',
   'Australia|Turkey': 'Vancouver, Canada',
-  'United States|Australia': 'Seattle, USA',
-  'Turkey|Paraguay': 'Houston, USA',
-  'Turkey|United States': 'Los Angeles, USA',
-  'Paraguay|Australia': 'Dallas, USA',
-  'Germany|Curaçao': 'Philadelphia, USA',
-  'Ivory Coast|Ecuador': 'Miami, USA',
-  'Germany|Ivory Coast': 'Atlanta, USA',
-  'Ecuador|Curaçao': 'Houston, USA',
-  'Curaçao|Ivory Coast': 'Kansas City, USA',
-  'Ecuador|Germany': 'Philadelphia, USA',
-  'Netherlands|Japan': 'Dallas, USA',
-  'Sweden|Tunisia': 'Houston, USA',
-  'Netherlands|Sweden': 'Dallas, USA',
-  'Tunisia|Japan': 'Kansas City, USA',
-  'Japan|Sweden': 'Seattle, USA',
-  'Tunisia|Netherlands': 'Miami, USA',
-  'Belgium|Egypt': 'Los Angeles, USA',
-  'Iran|New Zealand': 'San Francisco, USA',
-  'Belgium|Iran': 'Los Angeles, USA',
-  'New Zealand|Egypt': 'Seattle, USA',
-  'Egypt|Iran': 'San Francisco, USA',
-  'New Zealand|Belgium': 'Los Angeles, USA',
+  'Germany|Curaçao': 'Houston, USA',
+  'Netherlands|Japan': 'Arlington, Texas, USA',
+  'Ivory Coast|Ecuador': 'Philadelphia, USA',
+  'Sweden|Tunisia': 'Monterrey, Mexico',
   'Spain|Cape Verde': 'Atlanta, USA',
-  'Saudi Arabia|Uruguay': 'New York/NJ, USA',
+  'Belgium|Egypt': 'Seattle, USA',
+  'Saudi Arabia|Uruguay': 'Miami Gardens, Florida, USA',
+  'Iran|New Zealand': 'Inglewood, California, USA',
+  'France|Senegal': 'East Rutherford, New Jersey, USA',
+  'Iraq|Norway': 'Foxborough, Massachusetts, USA',
+  'Argentina|Algeria': 'Kansas City, USA',
+  'Austria|Jordan': 'Santa Clara, California, USA',
+  'Portugal|DR Congo': 'Houston, USA',
+  'England|Croatia': 'Arlington, Texas, USA',
+  'Ghana|Panama': 'Toronto, Canada',
+  'Uzbekistan|Colombia': 'Mexico City, Mexico',
+  'Czech Republic|South Africa': 'Atlanta, USA',
+  'Switzerland|Bosnia & Herzegovina': 'Inglewood, California, USA',
+  'Canada|Qatar': 'Vancouver, Canada',
+  'Mexico|South Korea': 'Zapopan, Mexico',
+  'USA|Australia': 'Seattle, USA',
+  'Scotland|Morocco': 'Foxborough, Massachusetts, USA',
+  'Brazil|Haiti': 'Philadelphia, USA',
+  'Turkey|Paraguay': 'Santa Clara, California, USA',
+  'Netherlands|Sweden': 'Houston, USA',
+  'Germany|Ivory Coast': 'Toronto, Canada',
+  'Ecuador|Curaçao': 'Kansas City, USA',
+  'Tunisia|Japan': 'Monterrey, Mexico',
   'Spain|Saudi Arabia': 'Atlanta, USA',
-  'Uruguay|Cape Verde': 'Boston, USA',
-  'Cape Verde|Saudi Arabia': 'Boston, USA',
-  'Uruguay|Spain': 'New York/NJ, USA',
-  'France|Senegal': 'New York/NJ, USA',
-  'Iraq|Norway': 'Boston, USA',
-  'France|Iraq': 'Miami, USA',
-  'Norway|Senegal': 'Philadelphia, USA',
-  'Norway|France': 'New York/NJ, USA',
-  'Senegal|Iraq': 'Dallas, USA',
-  'Argentina|Algeria': 'Dallas, USA',
-  'Austria|Jordan': 'Los Angeles, USA',
-  'Argentina|Austria': 'Dallas, USA',
-  'Jordan|Algeria': 'San Francisco, USA',
-  'Algeria|Austria': 'Houston, USA',
-  'Jordan|Argentina': 'Los Angeles, USA',
-  'Portugal|DR Congo': 'Kansas City, USA',
-  'Uzbekistan|Colombia': 'Miami, USA',
-  'Portugal|Uzbekistan': 'Kansas City, USA',
-  'Colombia|DR Congo': 'Houston, USA',
-  'Colombia|Portugal': 'Atlanta, USA',
-  'DR Congo|Uzbekistan': 'Miami, USA',
-  'England|Croatia': 'San Francisco, USA',
-  'Ghana|Panama': 'Philadelphia, USA',
-  'England|Ghana': 'New York/NJ, USA',
-  'Panama|Croatia': 'Seattle, USA',
-  'Panama|England': 'Boston, USA',
-  'Croatia|Ghana': 'Dallas, USA',
+  'Belgium|Iran': 'Inglewood, California, USA',
+  'Uruguay|Cape Verde': 'Miami Gardens, Florida, USA',
+  'New Zealand|Egypt': 'Vancouver, Canada',
+  'Argentina|Austria': 'Arlington, Texas, USA',
+  'France|Iraq': 'Philadelphia, USA',
+  'Norway|Senegal': 'East Rutherford, New Jersey, USA',
+  'Jordan|Algeria': 'Santa Clara, California, USA',
+  'Portugal|Uzbekistan': 'Houston, USA',
+  'England|Ghana': 'Foxborough, Massachusetts, USA',
+  'Panama|Croatia': 'Toronto, Canada',
+  'Colombia|DR Congo': 'Zapopan, Mexico',
+  'Switzerland|Canada': 'Vancouver, Canada',
+  'Bosnia & Herzegovina|Qatar': 'Seattle, USA',
+  'Scotland|Brazil': 'Miami Gardens, Florida, USA',
+  'Morocco|Haiti': 'Atlanta, USA',
+  'Czech Republic|Mexico': 'Mexico City, Mexico',
+  'South Africa|South Korea': 'Monterrey, Mexico',
+  'Curaçao|Ivory Coast': 'Philadelphia, USA',
+  'Ecuador|Germany': 'East Rutherford, New Jersey, USA',
+  'Japan|Sweden': 'Arlington, Texas, USA',
+  'Tunisia|Netherlands': 'Kansas City, USA',
+  'Turkey|USA': 'Inglewood, California, USA',
+  'Paraguay|Australia': 'Santa Clara, California, USA',
+  'Norway|France': 'Foxborough, Massachusetts, USA',
+  'Senegal|Iraq': 'Toronto, Canada',
+  'Cape Verde|Saudi Arabia': 'Houston, USA',
+  'Uruguay|Spain': 'Zapopan, Mexico',
+  'Egypt|Iran': 'Seattle, USA',
+  'New Zealand|Belgium': 'Vancouver, Canada',
+  'Panama|England': 'East Rutherford, New Jersey, USA',
+  'Croatia|Ghana': 'Philadelphia, USA',
+  'Colombia|Portugal': 'Miami Gardens, Florida, USA',
+  'DR Congo|Uzbekistan': 'Atlanta, USA',
+  'Algeria|Austria': 'Kansas City, USA',
+  'Jordan|Argentina': 'Arlington, Texas, USA',
 };
 
 function getVenue(t1n, t2n) {
@@ -2393,17 +2383,15 @@ function buildFixtureMatchHTML(m) {
   return `<div class="fixture-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
     <div class="fixture-team home ${t1win?'winner':''}">
       ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-      <span>${t1n}</span>
+      <span class="team-name-rank-stack"><span>${t1n}</span>${fifaRankBadge(t1n)}</span>
       <span>${flagHTML(t1n)}</span>
-      ${fifaRankBadge(t1n)}
       ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
     </div>
     ${scoreCell}
     <div class="fixture-team away ${t2win?'winner':''}">
       ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
       <span>${flagHTML(t2n)}</span>
-      <span>${t2n}</span>
-      ${fifaRankBadge(t2n)}
+      <span class="team-name-rank-stack"><span>${t2n}</span>${fifaRankBadge(t2n)}</span>
       ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
     </div>
   </div>
@@ -2468,9 +2456,8 @@ function renderFixtures() {
           html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
             <div class="fixture-team home ${t1win?'winner':''}">
               ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-              <span>${t1n}</span>
+              <span class="team-name-rank-stack"><span>${t1n}</span>${fifaRankBadge(t1n)}</span>
               <span>${flagHTML(t1n)}</span>
-              ${fifaRankBadge(t1n)}
               ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -2482,8 +2469,7 @@ function renderFixtures() {
             <div class="fixture-team away ${t2win?'winner':''}">
               ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
               <span>${flagHTML(t2n)}</span>
-              <span>${t2n}</span>
-              ${fifaRankBadge(t2n)}
+              <span class="team-name-rank-stack"><span>${t2n}</span>${fifaRankBadge(t2n)}</span>
               ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
             </div>
           </div>`;
@@ -2588,9 +2574,8 @@ function renderFixturesByManager(grid) {
     html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
       <div class="fixture-team home ${t1win?'winner':''} ${mine1?'mine':''}">
         ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-        <span>${t1n}</span>
+        <span class="team-name-rank-stack"><span>${t1n}</span>${fifaRankBadge(t1n)}</span>
         <span>${flagHTML(t1n)}</span>
-        ${fifaRankBadge(t1n)}
         ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -2602,8 +2587,7 @@ function renderFixturesByManager(grid) {
       <div class="fixture-team away ${t2win?'winner':''} ${mine2?'mine':''}">
         ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
         <span>${flagHTML(t2n)}</span>
-        <span>${t2n}</span>
-        ${fifaRankBadge(t2n)}
+        <span class="team-name-rank-stack"><span>${t2n}</span>${fifaRankBadge(t2n)}</span>
         ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
       </div>
     </div>`;
