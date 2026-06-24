@@ -1717,14 +1717,40 @@ const KO_STATUS = { live:['1H','HT','2H','ET','BT','P','INT','LIVE'], done:['FT'
 const GROUP_STAGE_END_UTC = Date.UTC(2026, 5, 28, 7, 0); // per ESPN calendar boundary
 
 async function fetchFromESPN() {
-  const url = 'https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=20260611-20260719&limit=400';
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error('ESPN HTTP ' + res.status);
-  const data = await res.json();
-  const events = data.events || [];
-  if (events.length === 0) throw new Error('ESPN returned no events');
+  // ESPN's scoreboard endpoint with a date range sometimes only returns a single
+  // day's events. Fetch each tournament date individually and merge to guarantee
+  // all completed matches are captured.
+  const START = new Date('2026-06-11');
+  const END   = new Date('2026-06-28'); // group stage ends Jun 27, add buffer
+  const today = new Date();
+  const cutoff = today < END ? today : END;
 
-  const all = events.map(e => {
+  const dates = [];
+  for (let d = new Date(START); d <= cutoff; d.setUTCDate(d.getUTCDate() + 1)) {
+    dates.push(d.toISOString().slice(0, 10).replace(/-/g, ''));
+  }
+
+  const allEvents = [];
+  const seenIds = new Set();
+
+  await Promise.all(dates.map(async dateStr => {
+    try {
+      const url = `https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates=${dateStr}&limit=20`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) return;
+      const data = await res.json();
+      for (const e of (data.events || [])) {
+        if (!seenIds.has(e.id)) {
+          seenIds.add(e.id);
+          allEvents.push(e);
+        }
+      }
+    } catch(e) { /* skip failed date */ }
+  }));
+
+  if (allEvents.length === 0) throw new Error('ESPN returned no events');
+
+  const all = allEvents.map(e => {
     const comp = (e.competitions || [])[0] || {};
     const stType = (comp.status || e.status || {}).type || {};
     const state_ = stType.state; // 'pre' | 'in' | 'post'
@@ -1732,7 +1758,7 @@ async function fetchFromESPN() {
     const away = (comp.competitors || []).find(c => c.homeAway === 'away') || {};
     const pensH = home.shootoutScore, pensA = away.shootoutScore;
     const hasPens = pensH != null || pensA != null;
-    const clock = stType.detail || stType.shortDetail || ''; // e.g. "45'" or "HT"
+    const clock = stType.detail || stType.shortDetail || '';
     const short = state_ === 'post' ? (hasPens ? 'PEN' : 'FT')
                 : state_ === 'in' ? 'LIVE'
                 : 'NS';
