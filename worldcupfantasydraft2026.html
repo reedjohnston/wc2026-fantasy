@@ -1603,27 +1603,32 @@ const API_NAME_MAP = {
 const APIFOOTBALL_NAME_MAP = {
   'Czech Republic': 'Czech Republic',
   'Bosnia': 'Bosnia and Herzegovina',
+  'Bosnia & Herzegovina': 'Bosnia and Herzegovina',
+  'Bosnia-Herzegovina': 'Bosnia and Herzegovina',
   'United States': 'United States',
   'USA': 'United States',
   "Côte d'Ivoire": 'Ivory Coast',
   'Ivory Coast': 'Ivory Coast',
   'DR Congo': 'DR Congo',
-  'Congo DR': 'DR Congo',
+  'Congo DR': 'DR Congo',            // ESPN displayName
+  'Congo, DR': 'DR Congo',
+  'Democratic Republic of Congo': 'DR Congo',
   'Cape Verde': 'Cape Verde',
+  'Cape Verde Islands': 'Cape Verde', // ESPN variant
   'Saudi Arabia': 'Saudi Arabia',
   'South Korea': 'South Korea',
   'Korea Republic': 'South Korea',
+  'Republic of Korea': 'South Korea',
   'New Zealand': 'New Zealand',
   'Curacao': 'Curaçao',
   'Curaçao': 'Curaçao',
   'Scotland': 'Scotland',
   'Haiti': 'Haiti',
-  // ESPN variants
-  'Czechia': 'Czech Republic',
-  'Cape Verde Islands': 'Cape Verde',
-  'Bosnia-Herzegovina': 'Bosnia and Herzegovina',
+  'Czechia': 'Czech Republic',       // ESPN variant
   'Türkiye': 'Turkey',
   'Turkiye': 'Turkey',
+  'IR Iran': 'Iran',                 // FIFA/ESPN official name
+  'Iran': 'Iran',
 };
 function normApiFootballName(n) { return APIFOOTBALL_NAME_MAP[n] || n; }
 
