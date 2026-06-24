@@ -2996,7 +2996,11 @@ loadApiKey();
 updateLiveIndicator();
 // Auto-refresh defaults ON; honour a previously saved choice.
 autoRefreshEnabled = localStorage.getItem(AUTOREFRESH_STORE) !== '0';
-if (autoRefreshEnabled) beginTicking(); else { updateAutoBtn(); syncLiveResults(); }
+if (autoRefreshEnabled) beginTicking(); else updateAutoBtn();
+// Always do one sync on load so results are never stale, regardless of
+// whether we're currently in a match window (which gates the auto-refresh
+// timer but shouldn't block the initial data load).
+syncLiveResults();
 </script>
 <div id="detail-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-card" role="dialog" aria-modal="true">
