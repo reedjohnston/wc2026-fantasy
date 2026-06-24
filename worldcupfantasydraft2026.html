@@ -2996,7 +2996,7 @@ loadApiKey();
 updateLiveIndicator();
 // Auto-refresh defaults ON; honour a previously saved choice.
 autoRefreshEnabled = localStorage.getItem(AUTOREFRESH_STORE) !== '0';
-if (autoRefreshEnabled) beginTicking(); else updateAutoBtn();
+if (autoRefreshEnabled) beginTicking(); else { updateAutoBtn(); syncLiveResults(); }
 </script>
 <div id="detail-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-card" role="dialog" aria-modal="true">
