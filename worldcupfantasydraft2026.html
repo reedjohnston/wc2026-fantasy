@@ -1417,18 +1417,18 @@ function renderGroups() {
         ${g.host?`<div class="group-host-badge">HOST</div>`:''}
       </div>
       <table class="group-table">
-        <thead><tr><th>Team</th><th class="r">W</th><th class="r">D</th><th class="r">L</th><th class="r">GD</th><th class="r">Pts</th><th class="r">In</th></tr></thead>
+        <thead><tr><th>Team</th><th class="r">W</th><th class="r">D</th><th class="r">L</th><th class="r">GD</th><th class="r">Pts</th></tr></thead>
         <tbody>${ranked.map(t=>{
           const d=state.teams[t]||defaultTeam(),isFT=FANTASY_TEAMS.has(t),owner=OWNER[t]||'';
           const gd=d.gd??0;
-          return `<tr class="${isFT?'fantasy-team':''}">
-            <td><div class="team-name-cell"><span class="team-flag">${flagHTML(t)}</span>${t}${isFT?`<span class="owner-tag">${owner}</span>`:''}</div></td>
-            <td class="r">${d.w}</td>
-            <td class="r">${d.d}</td>
-            <td class="r">${d.l}</td>
-            <td class="r" style="color:${gd>0?'var(--green-dark)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${gd}</td>
-            <td class="r" style="font-weight:600">${groupPts(t)}</td>
-            <td class="r">${d.alive!==false?'✓':'<span style="opacity:0.4">✗</span>'}</td>
+          const eliminated = d.alive === false;
+          return `<tr class="${isFT?'fantasy-team':''} ${eliminated?'eliminated-row':''}">
+            <td><div class="team-name-cell"><span class="team-flag" style="${eliminated?'opacity:0.45':''}">${flagHTML(t)}</span><span style="${eliminated?'text-decoration:line-through;opacity:0.5':''}"> ${t}</span>${isFT?`<span class="owner-tag" style="${eliminated?'opacity:0.45':''}">${owner}</span>`:''}</div></td>
+            <td class="r" style="${eliminated?'opacity:0.4':''}">${d.w}</td>
+            <td class="r" style="${eliminated?'opacity:0.4':''}">${d.d}</td>
+            <td class="r" style="${eliminated?'opacity:0.4':''}">${d.l}</td>
+            <td class="r" style="color:${eliminated?'var(--text-muted)':gd>0?'var(--green-dark)':gd<0?'#c53030':'var(--text-muted)'};${eliminated?'opacity:0.4':''}">${gd>0?'+':''}${gd}</td>
+            <td class="r" style="font-weight:600;${eliminated?'opacity:0.4':''}">${groupPts(t)}</td>
           </tr>`;
         }).join('')}</tbody>
       </table>`;
