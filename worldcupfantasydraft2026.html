@@ -1008,6 +1008,7 @@ function recalcKOPoints() {
     const roundKey=id.replace(/_\d+$/,'');
     if(state.teams[winner].ko.hasOwnProperty(roundKey)) state.teams[winner].ko[roundKey]=true;
   });
+  updateAliveStatus();
 }
 
 // ── SCORING ───────────────────────────────────────────────────────────────────
@@ -1035,12 +1036,49 @@ function rebuildGroupStats() {
     const s1 = sc.s1 || 0, s2 = sc.s2 || 0;
     state.teams[t1].gd += s1 - s2;
     state.teams[t2].gd += s2 - s1;
-    const fin = sc.fin !== false; // legacy entries without the flag were finished
+    const fin = sc.fin !== false;
     if (fin) {
       if (s1 > s2) { state.teams[t1].w++; state.teams[t2].l++; }
       else if (s2 > s1) { state.teams[t2].w++; state.teams[t1].l++; }
       else { state.teams[t1].d++; state.teams[t2].d++; }
     }
+  });
+  updateAliveStatus();
+}
+
+// After each sync, auto-mark the bottom 2 teams in a group as eliminated once
+// all 3 of their group-stage matches are complete. Top 2 advance; 4 best 3rd-place
+// teams also advance but we leave those as alive (user can see from standings).
+function updateAliveStatus() {
+  GROUPS.forEach(g => {
+    const teams = g.teams;
+    // Count total completed fixtures for this group
+    const completedInGroup = teams.reduce((sum, t) => {
+      const d = state.teams[t];
+      return sum + ((d ? d.w + d.d + d.l : 0));
+    }, 0) / 2; // each match counted twice (once per team)
+
+    // Each group has 6 matches total (4 teams × 3 games / 2)
+    // Group stage done when all 6 are played
+    if (completedInGroup < 6) {
+      // Group not finished — reset all to alive
+      teams.forEach(t => { if (state.teams[t]) state.teams[t].alive = true; });
+      return;
+    }
+
+    // All 6 matches played — rank teams and mark bottom 2 as eliminated
+    const ranked = getGroupRanking(g.letter);
+    ranked.forEach((t, idx) => {
+      if (state.teams[t]) state.teams[t].alive = idx < 2; // top 2 alive, bottom 2 out
+    });
+  });
+
+  // Knockout rounds: mark eliminated teams from KO scores
+  Object.entries(_bt).forEach(([id, {tA, tB}]) => {
+    const ms = state.koScores[id] || {};
+    if (!ms.winner) return;
+    const loser = ms.winner === 'A' ? tB : tA;
+    if (loser && state.teams[loser]) state.teams[loser].alive = false;
   });
 }
 
