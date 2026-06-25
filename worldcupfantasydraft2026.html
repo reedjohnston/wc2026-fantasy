@@ -238,6 +238,7 @@
   .ko-pens-input:focus{outline:none;border-color:var(--green);}
   .ko-pens-display{display:inline-flex;align-items:center;justify-content:center;width:26px;text-align:center;font-size:11px;padding:2px;border-radius:4px;background:var(--surface);color:var(--text);}
   .ko-tbd{font-size:12px;color:var(--text-muted);padding:10px;font-style:italic;}
+  .ko-tbd-inline{font-size:11px;color:var(--text-muted);font-style:italic;}
   .ko-winner-badge{font-size:11px;background:var(--green);color:white;padding:1px 6px;border-radius:8px;font-weight:500;flex-shrink:0;}
 
   /* THIRD-PLACE PICKER */
@@ -1554,7 +1555,6 @@ function addKORound(container, title, pts, matches) {
 function buildMatchCard(id, label, desc, tA, tB) {
   const card=document.createElement('div'); card.className='ko-match';
   const ms=state.koScores[id]||{};
-  const hasBoth=tA&&tB;
   const sched = KO_SCHEDULE[id];
   const schedHTML = sched ? (() => {
     const dateStr = new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
@@ -1562,7 +1562,15 @@ function buildMatchCard(id, label, desc, tA, tB) {
     return `<div class="ko-match-schedule">${dateStr} · ${timeStr} · ${sched.venue}</div>`;
   })() : '';
 
-  if(!hasBoth) {
+  // Find the R32 slot definition to check if missing team is a 3rd-place slot
+  const r32def = R32_MATCHES.find(m => m.id === id);
+  const slotAis3rd = r32def && r32def.slotA.startsWith('3rd:');
+  const slotBis3rd = r32def && r32def.slotB.startsWith('3rd:');
+  const tALabel = tA || (slotAis3rd ? `<span class="ko-tbd-inline">Best 3rd (${r32def.slotA.slice(4)})</span>` : null);
+  const tBLabel = tB || (slotBis3rd ? `<span class="ko-tbd-inline">Best 3rd (${r32def.slotB.slice(4)})</span>` : null);
+
+  // If neither team is known at all, show full TBD
+  if (!tA && !tB && !slotAis3rd && !slotBis3rd) {
     card.innerHTML=`<div class="ko-match-label">${label}</div>${schedHTML}${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}<div class="ko-tbd">Teams TBD</div>`;
     return card;
   }
@@ -1571,23 +1579,24 @@ function buildMatchCard(id, label, desc, tA, tB) {
   const gfA=ms.gfA??'', gfB=ms.gfB??'';
   const showPens=(gfA!==''&&gfB!==''&&parseInt(gfA)===parseInt(gfB));
 
+  function teamRow(team, teamLabel, gf, isWinner, is3rd) {
+    if (!team && !is3rd) return '';
+    const displayName = team || '';
+    return `<div class="ko-score-row ${isWinner?'winner-row':''}">
+      <span class="ko-team-name">${team ? flagHTML(team) : ''} ${team ? displayName : teamLabel}</span>
+      ${team && FANTASY_TEAMS.has(team)?`<span class="ko-owner-tag">${OWNER[team]}</span>`:''}
+      ${isWinner?`<span class="ko-winner-badge">W</span>`:''}
+      <span class="ko-score-display ${isWinner?'winner-score':''}">${gf!==''?gf:'–'}</span>
+    </div>`;
+  }
+
   card.innerHTML=`
     <div class="ko-match-label">${label}</div>
     ${schedHTML}
     ${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}
-    <div class="ko-score-row ${winA?'winner-row':''}">
-      <span class="ko-team-name">${flagHTML(tA)} ${tA}</span>
-      ${FANTASY_TEAMS.has(tA)?`<span class="ko-owner-tag">${OWNER[tA]}</span>`:''}
-      ${winA?`<span class="ko-winner-badge">W</span>`:''}
-      <span class="ko-score-display ${winA?'winner-score':''}">${gfA!==''?gfA:'–'}</span>
-    </div>
+    ${teamRow(tA, tALabel, gfA, winA, slotAis3rd)}
     <div class="ko-vs-divider">vs</div>
-    <div class="ko-score-row ${winB?'winner-row':''}">
-      <span class="ko-team-name">${flagHTML(tB)} ${tB}</span>
-      ${FANTASY_TEAMS.has(tB)?`<span class="ko-owner-tag">${OWNER[tB]}</span>`:''}
-      ${winB?`<span class="ko-winner-badge">W</span>`:''}
-      <span class="ko-score-display ${winB?'winner-score':''}">${gfB!==''?gfB:'–'}</span>
-    </div>
+    ${teamRow(tB, tBLabel, gfB, winB, slotBis3rd)}
     ${showPens?`
     <div class="ko-pens-row">
       <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Pens:</span>
