@@ -1046,34 +1046,50 @@ function rebuildGroupStats() {
   updateAliveStatus();
 }
 
-// After each sync, auto-mark the bottom 2 teams in a group as eliminated once
-// all 3 of their group-stage matches are complete. Top 2 advance; 4 best 3rd-place
-// teams also advance but we leave those as alive (user can see from standings).
+// After each sync, auto-mark eliminated teams.
+// Group stage: only rank 4 is definitely out. Rank 3 stays alive until
+// ALL groups finish and the best 4 of 8 third-placers are determined.
+// Knockout: losers are immediately eliminated.
 function updateAliveStatus() {
-  GROUPS.forEach(g => {
-    const teams = g.teams;
-    // Count total completed fixtures for this group
-    const completedInGroup = teams.reduce((sum, t) => {
-      const d = state.teams[t];
-      return sum + ((d ? d.w + d.d + d.l : 0));
-    }, 0) / 2; // each match counted twice (once per team)
+  const allGroupsDone = GROUPS.every(g => {
+    const mp = g.teams.reduce((s, t) => {
+      const d = state.teams[t]; return s + (d ? d.w + d.d + d.l : 0);
+    }, 0) / 2;
+    return mp >= 6;
+  });
 
-    // Each group has 6 matches total (4 teams × 3 games / 2)
-    // Group stage done when all 6 are played
-    if (completedInGroup < 6) {
-      // Group not finished — reset all to alive
-      teams.forEach(t => { if (state.teams[t]) state.teams[t].alive = true; });
+  GROUPS.forEach(g => {
+    const mp = g.teams.reduce((s, t) => {
+      const d = state.teams[t]; return s + (d ? d.w + d.d + d.l : 0);
+    }, 0) / 2;
+
+    if (mp < 6) {
+      // Group not finished — everyone alive
+      g.teams.forEach(t => { if (state.teams[t]) state.teams[t].alive = true; });
       return;
     }
 
-    // All 6 matches played — rank teams and mark bottom 2 as eliminated
     const ranked = getGroupRanking(g.letter);
     ranked.forEach((t, idx) => {
-      if (state.teams[t]) state.teams[t].alive = idx < 2; // top 2 alive, bottom 2 out
+      if (!state.teams[t]) return;
+      if (idx === 3) {
+        // Rank 4: always eliminated
+        state.teams[t].alive = false;
+      } else if (idx === 2) {
+        // Rank 3: alive until all groups done; then determined by best-4-of-8
+        if (!allGroupsDone) {
+          state.teams[t].alive = true;
+        }
+        // If all groups done, keep alive — user can see from bracket who advanced
+        // (we don't auto-eliminate 3rd place teams since 4 of 8 advance)
+      } else {
+        // Rank 1 or 2: always advance
+        state.teams[t].alive = true;
+      }
     });
   });
 
-  // Knockout rounds: mark eliminated teams from KO scores
+  // Knockout rounds: losers are immediately eliminated
   Object.entries(_bt).forEach(([id, {tA, tB}]) => {
     const ms = state.koScores[id] || {};
     if (!ms.winner) return;
