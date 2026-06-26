@@ -247,6 +247,22 @@
   .third-help{font-size:12px;color:var(--text-muted);margin-bottom:0.9rem;line-height:1.4;}
   .third-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px;}
   .third-row{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius);padding:8px 12px;}
+  .third-table{width:100%;border-collapse:collapse;font-size:13px;}
+  .third-table th{font-size:10px;font-weight:700;color:var(--text-muted);padding:6px 10px;border-bottom:0.5px solid var(--border);letter-spacing:0.06em;text-transform:uppercase;}
+  .third-table td{padding:8px 10px;border-bottom:0.5px solid var(--border);color:var(--text);vertical-align:middle;}
+  .third-table tr:last-child td{border-bottom:none;}
+  .third-rank{font-family:'DM Mono',monospace;font-size:13px;color:var(--text-muted);width:28px;}
+  .third-team{display:flex;align-items:center;gap:7px;font-weight:500;}
+  .third-flag{font-size:16px;line-height:1;flex-shrink:0;}
+  .third-advancing td{background:rgba(29,158,117,0.06);}
+  .third-advancing .third-rank{color:var(--green);}
+  .third-fantasy td:first-child{border-left:3px solid var(--gold);padding-left:7px;}
+  .third-cutline td{padding:4px 10px;text-align:center;font-size:10px;color:var(--text-muted);letter-spacing:0.08em;text-transform:uppercase;border-bottom:1px dashed var(--border-strong);background:transparent;}
+  .third-status{font-size:10px;font-weight:700;padding:2px 7px;border-radius:6px;white-space:nowrap;}
+  .third-status.in{background:rgba(29,158,117,0.15);color:var(--green);}
+  .third-status.bubble{background:rgba(250,199,117,0.15);color:#c8973a;}
+  .third-status.out{background:rgba(255,90,82,0.1);color:#e53e3e;}
+  .third-help{font-size:12px;color:var(--text-muted);margin:4px 0 10px;}
   .third-match-label{font-size:12px;font-weight:500;color:var(--text);white-space:nowrap;}
   .third-match-label em{font-style:normal;color:var(--text-muted);font-weight:400;font-size:11px;}
   .third-select{font-size:12px;padding:5px 8px;border-radius:6px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;max-width:150px;cursor:pointer;}
@@ -1521,43 +1537,87 @@ function toggleSettings() {
 }
 
 // ── KNOCKOUT ──────────────────────────────────────────────────────────────────
-function assignThird(matchId, grp) {
-  if (!state.thirdPlace) state.thirdPlace = {};
-  if (grp) state.thirdPlace[matchId] = grp; else delete state.thirdPlace[matchId];
-  recalcKOPoints(); persist(); renderKnockoutPreservingFocus();
-}
-
 function addThirdPlacePanel(container) {
-  const thirdMatches = R32_MATCHES.filter(m => m.slotB.startsWith('3rd:'));
-  // Detect a group's 3rd-place team assigned to more than one slot (only one can advance).
-  const used = {};
-  thirdMatches.forEach(m => { const g=state.thirdPlace?.[m.id]; if(g) used[g]=(used[g]||0)+1; });
-  const dupes = Object.keys(used).filter(g => used[g] > 1);
-
   const sec = document.createElement('div');
   sec.className = 'ko-section third-place-panel';
-  let html = `<div class="ko-section-title">Best Third-Place Qualifiers
-    <span class="ko-pts-note">assign the 8 advancing 3rd-place teams</span></div>
-    <div class="third-help">8 of the 12 third-place teams advance to the Round of 32. Pick which group's third-place team fills each slot — the bracket fills in automatically.</div>
-    <div class="third-grid">`;
-  thirdMatches.forEach(m => {
-    const chosen = state.thirdPlace?.[m.id] || '';
-    const opts = ['<option value="">— pick group —</option>'].concat(
-      thirdSlotGroups(m.slotB).map(g => {
-        const team = getGroupRanking(g)[2];
-        const lbl = team ? `Group ${g} 3rd · ${team}` : `Group ${g} 3rd`;
-        return `<option value="${g}" ${chosen===g?'selected':''}>${lbl}</option>`;
-      })
-    ).join('');
-    const dupeCls = chosen && dupes.includes(chosen) ? ' third-dupe' : '';
-    html += `<div class="third-row">
-      <span class="third-match-label">${m.label} <em>vs ${m.slotA[0]}${m.slotA[1]==='1'?' winner':"'s runner-up"}</em></span>
-      <select class="third-select${dupeCls}" id="third_${m.id}" aria-label="Third-place team for ${m.label}" onchange="assignThird('${m.id}', this.value)">${opts}</select>
-    </div>`;
+
+  // Collect 3rd-place team from every group that has played at least 1 match
+  const rows = [];
+  GROUPS.forEach(g => {
+    const ranked = getGroupRanking(g.letter);
+    const t = ranked[2];
+    if (!t || !state.teams[t]) return;
+    const d = state.teams[t];
+    const mp = (d.w||0) + (d.d||0) + (d.l||0);
+    if (mp === 0) return;
+    const pts = (d.w||0)*3 + (d.d||0);
+    const gd = d.gd || 0;
+    const gf = groupGF(t);
+    rows.push({ group: g.letter, team: t, mp, pts, gd, gf });
   });
-  html += `</div>`;
-  if (dupes.length) html += `<div class="third-warning">⚠ A group's third-place team can only advance once. Duplicated: ${dupes.map(g=>'Group '+g).join(', ')}.</div>`;
-  sec.innerHTML = html;
+
+  // Sort: pts → gd → gf → alphabetical (FIFA tiebreaker order)
+  rows.sort((a, b) =>
+    b.pts - a.pts || b.gd - a.gd || b.gf - a.gf || a.team.localeCompare(b.team)
+  );
+
+  const allGroupsDone = GROUPS.every(g => {
+    const ranked = getGroupRanking(g.letter);
+    const t = ranked[2];
+    if (!t || !state.teams[t]) return false;
+    const d = state.teams[t];
+    return (d.w||0) + (d.d||0) + (d.l||0) >= 3;
+  });
+
+  const groupsWithData = rows.length; // up to 12
+  const ADVANCE = 8; // top 8 of 12 advance
+
+  const tableRows = rows.map((r, i) => {
+    const rank = i + 1;
+    const isFT = FANTASY_TEAMS.has(r.team);
+    const gdStr = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
+    let statusBadge;
+    if (allGroupsDone) {
+      statusBadge = rank <= ADVANCE
+        ? `<span class="third-status in">IN</span>`
+        : `<span class="third-status out">OUT</span>`;
+    } else {
+      if (rank <= ADVANCE)        statusBadge = `<span class="third-status in">IN</span>`;
+      else if (rank <= ADVANCE+2) statusBadge = `<span class="third-status bubble">BUBBLE</span>`;
+      else                        statusBadge = `<span class="third-status out">OUT</span>`;
+    }
+
+    const cutlineAfter = rank === ADVANCE && groupsWithData > ADVANCE
+      ? '<tr class="third-cutline"><td colspan="7"><span>— Cutline —</span></td></tr>'
+      : '';
+
+    return `<tr class="${rank <= ADVANCE ? 'third-advancing' : ''} ${isFT ? 'third-fantasy' : ''}">
+      <td class="third-rank">${rank}</td>
+      <td class="third-team"><span class="third-flag">${flagHTML(r.team)}</span>${r.team}${isFT ? `<span class="owner-tag">${OWNER[r.team]}</span>` : ''}</td>
+      <td class="r">Grp ${r.group}</td>
+      <td class="r">${r.mp}</td>
+      <td class="r" style="font-weight:600">${r.pts}</td>
+      <td class="r" style="color:${r.gd>0?'var(--green-dark)':r.gd<0?'#c53030':'var(--text-muted)'}">${gdStr}</td>
+      <td class="r">${statusBadge}</td>
+    </tr>${cutlineAfter}`;
+  }).join('');
+
+  const note = allGroupsDone
+    ? `All groups complete — final 3rd-place standings.`
+    : `${groupsWithData} of 12 groups reporting · top 8 advance · updates after each match`;
+
+  sec.innerHTML = `
+    <div class="ko-section-title">Best Third-Place Standings
+      <span class="ko-pts-note">top 8 of 12 advance to Round of 32</span>
+    </div>
+    <p class="third-help">${note}</p>
+    <table class="third-table">
+      <thead><tr>
+        <th>#</th><th>Team</th><th class="r">Grp</th><th class="r">MP</th><th class="r">Pts</th><th class="r">GD</th><th class="r">Status</th>
+      </tr></thead>
+      <tbody>${tableRows}</tbody>
+    </table>`;
+
   container.appendChild(sec);
 }
 
