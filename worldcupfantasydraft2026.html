@@ -1576,11 +1576,6 @@ function addThirdPlacePanel(container) {
     const rank = i + 1;
     const isFT = FANTASY_TEAMS.has(r.team);
     const gdStr = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
-    let statusBadge;
-    if (allGroupsDone) {
-      statusBadge = rank <= ADVANCE
-        ? `<span class="third-status in">IN</span>`
-        : `<span class="third-status out">OUT</span>`;
     } else {
       if (rank <= ADVANCE)        statusBadge = `<span class="third-status in">IN</span>`;
       else if (rank <= ADVANCE+2) statusBadge = `<span class="third-status bubble">BUBBLE</span>`;
@@ -1588,7 +1583,7 @@ function addThirdPlacePanel(container) {
     }
 
     const cutlineAfter = rank === ADVANCE && groupsWithData > ADVANCE
-      ? '<tr class="third-cutline"><td colspan="7"><span>— Cutline —</span></td></tr>'
+      ? '<tr class="third-cutline"><td colspan="6"><span>— Cutline —</span></td></tr>'
       : '';
 
     return `<tr class="${rank <= ADVANCE ? 'third-advancing' : ''} ${isFT ? 'third-fantasy' : ''}">
@@ -1598,7 +1593,6 @@ function addThirdPlacePanel(container) {
       <td class="r">${r.mp}</td>
       <td class="r" style="font-weight:600">${r.pts}</td>
       <td class="r" style="color:${r.gd>0?'var(--green-dark)':r.gd<0?'#c53030':'var(--text-muted)'}">${gdStr}</td>
-      <td class="r">${statusBadge}</td>
     </tr>${cutlineAfter}`;
   }).join('');
 
@@ -1613,7 +1607,7 @@ function addThirdPlacePanel(container) {
     <p class="third-help">${note}</p>
     <table class="third-table">
       <thead><tr>
-        <th>#</th><th>Team</th><th class="r">Grp</th><th class="r">MP</th><th class="r">Pts</th><th class="r">GD</th><th class="r">Status</th>
+        <th>#</th><th>Team</th><th class="r">Grp</th><th class="r">MP</th><th class="r">Pts</th><th class="r">GD</th>
       </tr></thead>
       <tbody>${tableRows}</tbody>
     </table>`;
