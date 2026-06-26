@@ -140,6 +140,8 @@
   .team-name-rank-stack{display:inline-flex;flex-direction:column;align-items:center;gap:1px;}
   .team-name-rank-stack .fifa-rank-badge{margin-left:0;}
   .team-name-flag-row{display:inline-flex;align-items:center;gap:5px;}
+  /* stack-owner: always shown, stacked below rank badge in the column */
+  .stack-owner{display:inline-block;margin-top:2px;}
   .w-input{width:36px;text-align:center;font-size:12px;padding:4px 2px;border-radius:5px;border:0.5px solid var(--border-strong);background:var(--surface2);color:var(--text);font-family:'DM Sans',sans-serif;}
   .w-input:focus{outline:none;border-color:var(--gold);background:var(--scoreface);}
   .gd-input{width:44px !important;}
@@ -1381,9 +1383,9 @@ function renderNextUp() {
     return `
       <div class="next-up-card">
         <div class="next-up-match">
-          <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span class="team-name-rank-stack" style="align-items:flex-end"><span class="team-name-flag-row">${flagHTML(d.t1n)}<span>${d.t1n}</span></span>${fifaRankBadge(d.t1n)}</span>${OWNER[d.t1n]?`<span class="fixture-owner-tag">${OWNER[d.t1n]}</span>`:''}</div>
+          <div class="next-up-team t1">${mine1?'<span class="mine-dot"></span>':''}<span class="team-name-rank-stack" style="align-items:flex-end"><span class="team-name-flag-row">${flagHTML(d.t1n)}<span>${d.t1n}</span></span>${fifaRankBadge(d.t1n)}${OWNER[d.t1n]?`<span class="fixture-owner-tag stack-owner">${OWNER[d.t1n]}</span>`:''}</span></div>
           <div class="next-up-mid">${mid}</div>
-          <div class="next-up-team t2">${OWNER[d.t2n]?`<span class="fixture-owner-tag">${OWNER[d.t2n]}</span>`:''}<span class="team-name-rank-stack" style="align-items:flex-start"><span class="team-name-flag-row">${flagHTML(d.t2n)}<span>${d.t2n}</span></span>${fifaRankBadge(d.t2n)}</span>${mine2?'<span class="mine-dot"></span>':''}</div>
+          <div class="next-up-team t2"><span class="team-name-rank-stack" style="align-items:flex-start"><span class="team-name-flag-row">${flagHTML(d.t2n)}<span>${d.t2n}</span></span>${fifaRankBadge(d.t2n)}${OWNER[d.t2n]?`<span class="fixture-owner-tag stack-owner">${OWNER[d.t2n]}</span>`:''}</span>${mine2?'<span class="mine-dot"></span>':''}</div>
         </div>
         <div class="next-up-meta">${m.group} · ${m.round}${venue?` · ${venue}`:''}${myTeamLabel}</div>
       </div>`;
@@ -2503,13 +2505,11 @@ function buildFixtureMatchHTML(m) {
   return `<div class="fixture-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
     <div class="fixture-team home ${t1win?'winner':''}">
       ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-      <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}</span>
-      ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
+      <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}${isFT1?`<span class="fixture-owner-tag stack-owner">${OWNER[t1n]}</span>`:''}</span>
     </div>
     ${scoreCell}
     <div class="fixture-team away ${t2win?'winner':''}">
-      ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
-      <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}</span>
+      <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}${isFT2?`<span class="fixture-owner-tag stack-owner">${OWNER[t2n]}</span>`:''}</span>
       ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
     </div>
   </div>
@@ -2574,8 +2574,7 @@ function renderFixtures() {
           html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
             <div class="fixture-team home ${t1win?'winner':''}">
               ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-              <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}</span>
-              ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
+              <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}${isFT1?`<span class="fixture-owner-tag stack-owner">${OWNER[t1n]}</span>`:''}</span>
             </div>
             <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
               <div class="fixture-group-pill">${m.group}</div>
@@ -2584,8 +2583,7 @@ function renderFixtures() {
               ${(() => { const v = getVenue(t1n, t2n); return v ? `<div style="font-size:11px;color:var(--text-muted);white-space:normal;text-align:center;line-height:1.25">${v}</div>` : ''; })()}
             </div>
             <div class="fixture-team away ${t2win?'winner':''}">
-              ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
-              <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}</span>
+              <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}${isFT2?`<span class="fixture-owner-tag stack-owner">${OWNER[t2n]}</span>`:''}</span>
               ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
             </div>
           </div>`;
@@ -2690,8 +2688,7 @@ function renderFixturesByManager(grid) {
     html += `<div class="fixture-row matchday-row ${hasScore?'has-score':''} ${isLiveMatch?'is-live':''}">
       <div class="fixture-team home ${t1win?'winner':''} ${mine1?'mine':''}">
         ${isFT1?'<span class="fixture-fantasy-dot"></span>':''}
-        <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}</span>
-        ${isFT1?`<span class="fixture-owner-tag">${OWNER[t1n]}</span>`:''}
+        <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t1n)}<span>${t1n}</span></span>${fifaRankBadge(t1n)}${isFT1?`<span class="fixture-owner-tag stack-owner">${OWNER[t1n]}</span>`:''}</span>
       </div>
       <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
         <div class="fixture-group-pill">${m.group.replace('Group ','')}</div>
@@ -2700,8 +2697,7 @@ function renderFixturesByManager(grid) {
         ${(() => { const v = getVenue(t1n, t2n); return v ? `<div class="fixture-venue-inline">${v}</div>` : ''; })()}
       </div>
       <div class="fixture-team away ${t2win?'winner':''} ${mine2?'mine':''}">
-        ${isFT2?`<span class="fixture-owner-tag">${OWNER[t2n]}</span>`:''}
-        <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}</span>
+        <span class="team-name-rank-stack"><span class="team-name-flag-row">${flagHTML(t2n)}<span>${t2n}</span></span>${fifaRankBadge(t2n)}${isFT2?`<span class="fixture-owner-tag stack-owner">${OWNER[t2n]}</span>`:''}</span>
         ${isFT2?'<span class="fixture-fantasy-dot"></span>':''}
       </div>
     </div>`;
