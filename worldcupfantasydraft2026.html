@@ -1576,11 +1576,6 @@ function addThirdPlacePanel(container) {
     const rank = i + 1;
     const isFT = FANTASY_TEAMS.has(r.team);
     const gdStr = r.gd > 0 ? `+${r.gd}` : `${r.gd}`;
-    } else {
-      if (rank <= ADVANCE)        statusBadge = `<span class="third-status in">IN</span>`;
-      else if (rank <= ADVANCE+2) statusBadge = `<span class="third-status bubble">BUBBLE</span>`;
-      else                        statusBadge = `<span class="third-status out">OUT</span>`;
-    }
 
     const cutlineAfter = rank === ADVANCE && groupsWithData > ADVANCE
       ? '<tr class="third-cutline"><td colspan="6"><span>— Cutline —</span></td></tr>'
