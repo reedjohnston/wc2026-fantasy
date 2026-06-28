@@ -1906,17 +1906,18 @@ const KO_STATUS = { live:['1H','HT','2H','ET','BT','P','INT','LIVE'], done:['FT'
 const GROUP_STAGE_END_UTC = Date.UTC(2026, 5, 28, 7, 0); // per ESPN calendar boundary
 
 async function fetchFromESPN() {
-  // ESPN's scoreboard endpoint with a date range sometimes only returns a single
-  // day's events. Fetch each tournament date individually and merge to guarantee
-  // all completed matches are captured.
-  const START = new Date('2026-06-11');
-  const END   = new Date('2026-06-28'); // group stage ends Jun 27, add buffer
-  const today = new Date();
-  const cutoff = today < END ? today : END;
+  const TOURNAMENT_START = '2026-06-11';
+  const TOURNAMENT_END   = '2026-07-19';
+  const today = new Date().toISOString().slice(0, 10);
+  const fetchUntil = today <= TOURNAMENT_END ? today : TOURNAMENT_END;
 
+  // Build list of dates from start through today
   const dates = [];
-  for (let d = new Date(START); d <= cutoff; d.setUTCDate(d.getUTCDate() + 1)) {
+  let d = new Date(TOURNAMENT_START + 'T12:00:00Z');
+  const end = new Date(fetchUntil + 'T12:00:00Z');
+  while (d <= end) {
     dates.push(d.toISOString().slice(0, 10).replace(/-/g, ''));
+    d.setUTCDate(d.getUTCDate() + 1);
   }
 
   const allEvents = [];
@@ -1942,7 +1943,7 @@ async function fetchFromESPN() {
   const all = allEvents.map(e => {
     const comp = (e.competitions || [])[0] || {};
     const stType = (comp.status || e.status || {}).type || {};
-    const state_ = stType.state; // 'pre' | 'in' | 'post'
+    const state_ = stType.state;
     const home = (comp.competitors || []).find(c => c.homeAway === 'home') || {};
     const away = (comp.competitors || []).find(c => c.homeAway === 'away') || {};
     const pensH = home.shootoutScore, pensA = away.shootoutScore;
