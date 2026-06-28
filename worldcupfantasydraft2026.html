@@ -1964,7 +1964,12 @@ async function fetchFromESPN() {
   if (all.length === 0) throw new Error('ESPN events had no usable teams');
   return { all };
 }
-const isGroupRound = f => /group/i.test(f.league?.round || '');
+const isGroupRound = f => {
+  // Use date boundary: all 72 group-stage matches kicked off before Jun 28 07:00 UTC
+  if (f.fixture && f.fixture.date) return Date.parse(f.fixture.date) < GROUP_STAGE_END_UTC;
+  // Fall back to round label check
+  return /group/i.test(f.league?.round || '');
+};
 
 // Best-effort round label for a KO fixture, used only for reconciliation flags.
 // API-Football exposes a real round string; ESPN only tells us "Knockout".
