@@ -219,6 +219,7 @@
   /* KNOCKOUT */
   .ko-section{margin-bottom:2rem;}
   .ko-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border-strong);display:flex;align-items:center;gap:10px;}
+  .third-collapse-toggle:hover .third-chevron{color:var(--gold);}
   .ko-pts-note{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;color:var(--text-muted);letter-spacing:0;}
   .ko-grid{display:flex;flex-wrap:wrap;gap:10px;}
   .ko-match{background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius);overflow:hidden;min-width:220px;flex:1 1 220px;max-width:280px;}
@@ -653,10 +654,6 @@
     <div class="site-sub">2026 FIFA World Cup</div>
   </div>
   <div class="header-right">
-    <div class="identity-wrap">
-      <select id="identity-picker" class="identity-picker" aria-label="Which manager are you" onchange="setIdentity(this.value)"></select>
-      <span class="identity-arrow">▾</span>
-    </div>
     <span id="live-indicator" class="live-indicator" style="display:none"><span class="live-pip"></span>LIVE</span>
   </div>
 </header>
@@ -665,9 +662,9 @@
   <div class="nav-dropdown-wrap">
     <select class="nav-dropdown" id="nav-select" aria-label="App section" onchange="switchTab(this.value)">
       <option value="leaderboard">Leaderboard</option>
+      <option value="knockout">Knockout Rounds</option>
       <option value="fixtures">Group Schedule</option>
       <option value="groups">Group Standings</option>
-      <option value="knockout">Knockout Rounds</option>
       <option value="history">League History</option>
       <option value="rules">Scoring Rules</option>
     </select>
@@ -1575,7 +1572,14 @@ function toggleSettings() {
 }
 
 // ── KNOCKOUT ──────────────────────────────────────────────────────────────────
-function addThirdPlacePanel(container) {
+function toggleThirdPanel(titleEl) {
+  const body = titleEl.nextElementSibling;
+  const chevron = titleEl.querySelector('.third-chevron');
+  const isOpen = body.style.display !== 'none';
+  body.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.textContent = isOpen ? '▶' : '▼';
+}
+
   const sec = document.createElement('div');
   sec.className = 'ko-section third-place-panel';
 
@@ -1635,16 +1639,20 @@ function addThirdPlacePanel(container) {
     : `${groupsWithData} of 12 groups reporting · top 8 advance · updates after each match`;
 
   sec.innerHTML = `
-    <div class="ko-section-title">Best Third-Place Standings
+    <div class="ko-section-title third-collapse-toggle" onclick="toggleThirdPanel(this)" style="cursor:pointer;user-select:none">
+      Best Third-Place Standings
       <span class="ko-pts-note">top 8 of 12 advance to Round of 32</span>
+      <span class="third-chevron" style="margin-left:auto;font-size:13px;color:var(--text-muted)">▶</span>
     </div>
-    <p class="third-help">${note}</p>
-    <table class="third-table">
-      <thead><tr>
-        <th>#</th><th>Team</th><th class="r">Grp</th><th class="r">MP</th><th class="r">Pts</th><th class="r">GD</th>
-      </tr></thead>
-      <tbody>${tableRows}</tbody>
-    </table>`;
+    <div class="third-body" style="display:none">
+      <p class="third-help">${note}</p>
+      <table class="third-table">
+        <thead><tr>
+          <th>#</th><th>Team</th><th class="r">Grp</th><th class="r">MP</th><th class="r">Pts</th><th class="r">GD</th>
+        </tr></thead>
+        <tbody>${tableRows}</tbody>
+      </table>
+    </div>`;
 
   container.appendChild(sec);
 }
