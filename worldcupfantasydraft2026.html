@@ -103,7 +103,7 @@
   .rank-move.up { color:var(--green); }
   .rank-move.down { color:#c53030; }
   .rank-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:13px; font-weight:700; box-shadow:inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.12); }
-  .rank-1{background:linear-gradient(140deg,#FFE6A8,var(--gold-deep));color:var(--gold-dark);box-shadow:inset 0 1px 1px rgba(255,255,255,0.7), 0 0 0 2px rgba(239,159,39,0.25), 0 2px 6px rgba(239,159,39,0.4);}
+  .rank-1{background:linear-gradient(140deg,#FFE6A8,var(--gold-deep));color:var(--gold-dark);}
   .rank-2{background:linear-gradient(140deg,#EEEDE8,var(--silver));color:var(--silver-dark);}
   .rank-3{background:linear-gradient(140deg,#FAD9CC,var(--bronze));color:var(--bronze-dark);}
   .rank-n{background:var(--surface2);color:var(--text-muted);font-weight:500;}
@@ -224,6 +224,8 @@
   .ko-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;}
   .ko-match{background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius-lg);overflow:hidden;min-width:220px;flex:1 1 220px;max-width:320px;box-shadow:var(--shadow-sm);transition:box-shadow 0.18s,transform 0.18s;}
   .ko-match:hover{box-shadow:var(--shadow-md);}
+  .ko-fixture-mid{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:96px;}
+  .ko-pens-note{font-size:9px;color:var(--text-muted);text-align:center;}
   .ko-match-label{background:var(--header-grad);font-size:11px;font-weight:600;color:var(--text-muted);padding:8px 14px;letter-spacing:0.06em;text-transform:uppercase;border-bottom:2px solid var(--green);display:flex;align-items:center;gap:6px;}
   .ko-match-sublabel{font-size:11px;color:var(--text-muted);padding:4px 14px 5px;background:var(--surface2);border-bottom:0.5px solid var(--border);font-style:italic;}
   .ko-match-schedule{font-size:11px;color:var(--green-dark);background:var(--green-light);padding:4px 14px;border-bottom:0.5px solid var(--green-mid);font-weight:500;letter-spacing:0.02em;}
@@ -327,8 +329,9 @@
     .fifa-rank-badge { font-size:9px; padding:0px 4px; }
 
     /* Knockout — full width cards */
-    .ko-grid { gap:8px; }
+    .ko-grid { gap:10px; }
     .ko-match { min-width:0; max-width:100%; flex:1 1 100%; }
+    .ko-fixture-mid { min-width:78px; }
     .ko-score-row { padding:8px 10px; }
     .ko-team-name { font-size:12px; }
     .ko-score-input { width:36px; font-size:14px; padding:5px 2px; }
@@ -455,9 +458,7 @@
   .ko-score-input{font-family:'DM Mono',monospace;}
 
   /* Rank badges: floodlit medallions */
-  .rank-1{background:radial-gradient(circle at 35% 30%,#FFE9A8,var(--gold-deep));color:var(--gold-dark);
-    box-shadow:0 0 0 2px rgba(242,193,78,0.4), 0 0 18px var(--gold-glow), inset 0 1px 2px rgba(255,255,255,0.6);
-    animation:badgeGlow 2.6s ease-in-out infinite;}
+  .rank-1{background:radial-gradient(circle at 35% 30%,#FFE9A8,var(--gold-deep));color:var(--gold-dark);box-shadow:inset 0 1px 2px rgba(255,255,255,0.6);}
   .rank-2{background:radial-gradient(circle at 35% 30%,#F2F0EA,var(--silver));color:var(--silver-dark);box-shadow:0 0 12px rgba(216,214,204,0.3), inset 0 1px 2px rgba(255,255,255,0.6);}
   .rank-3{background:radial-gradient(circle at 35% 30%,#F0C49A,var(--bronze));color:var(--bronze-dark);box-shadow:0 0 12px rgba(224,163,114,0.3), inset 0 1px 2px rgba(255,255,255,0.5);}
   .rank-n{background:var(--surface2);color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border);}
@@ -507,7 +508,7 @@
 
   /* Respect reduced-motion */
   @media (prefers-reduced-motion: reduce){
-    .section.active,.lb-table tbody tr,.fixture-score:not(.pending),.rank-1{animation:none !important;}
+    .section.active,.lb-table tbody tr,.fixture-score:not(.pending),.rank-1,.rank-2,.rank-3{animation:none !important;}
     .group-card:hover,.fixture-card:hover{transform:none;}
   }
 
@@ -1746,58 +1747,74 @@ function addKORound(container, title, pts, matches) {
 }
 
 function buildMatchCard(id, label, desc, tA, tB) {
-  const card=document.createElement('div'); card.className='ko-match';
-  const ms=state.koScores[id]||{};
+  const card = document.createElement('div');
+  card.className = 'ko-match';
+  const ms = state.koScores[id] || {};
   const sched = KO_SCHEDULE[id];
-  const schedHTML = sched ? (() => {
-    const dateStr = new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
-    const timeStr = localKickoff(sched.date, sched.time);
-    return `<div class="ko-match-schedule">${dateStr} · ${timeStr} · ${sched.venue}</div>`;
-  })() : '';
+  const dateStr = sched ? new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+  const timeStr = sched ? localKickoff(sched.date, sched.time) : '';
+  const venue = sched ? sched.venue : '';
 
-  // Find the R32 slot definition to check if missing team is a 3rd-place slot
   const r32def = R32_MATCHES.find(m => m.id === id);
   const slotAis3rd = r32def && r32def.slotA.startsWith('3rd:');
   const slotBis3rd = r32def && r32def.slotB.startsWith('3rd:');
-  const tALabel = tA || (slotAis3rd ? `<span class="ko-tbd-inline">Best 3rd (${r32def.slotA.slice(4)})</span>` : null);
-  const tBLabel = tB || (slotBis3rd ? `<span class="ko-tbd-inline">Best 3rd (${r32def.slotB.slice(4)})</span>` : null);
 
-  // If neither team is known at all, show full TBD
   if (!tA && !tB && !slotAis3rd && !slotBis3rd) {
-    card.innerHTML=`<div class="ko-match-label">${label}</div>${schedHTML}${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}<div class="ko-tbd">Teams TBD</div>`;
+    card.innerHTML = `
+      <div class="ko-match-label">${label}${desc?` <span style="font-weight:400;opacity:0.6">· ${desc}</span>`:''}</div>
+      ${sched?`<div class="ko-match-schedule">${dateStr} · ${timeStr} · ${venue}</div>`:''}
+      <div class="ko-tbd">Teams TBD</div>`;
     return card;
   }
 
-  const winA=ms.winner==='A', winB=ms.winner==='B';
-  const gfA=ms.gfA??'', gfB=ms.gfB??'';
-  const showPens=(gfA!==''&&gfB!==''&&parseInt(gfA)===parseInt(gfB));
+  const winA = ms.winner === 'A', winB = ms.winner === 'B';
+  const gfA = ms.gfA ?? '', gfB = ms.gfB ?? '';
+  const hasScore = gfA !== '' && gfB !== '';
+  const showPens = hasScore && parseInt(gfA) === parseInt(gfB) && ms.winner;
+  const pensStr = showPens ? `<div class="ko-pens-note">Pens: ${ms.pensA??'–'}–${ms.pensB??'–'}</div>` : '';
 
-  function teamRow(team, teamLabel, gf, isWinner, is3rd) {
-    if (!team && !is3rd) return '';
-    const displayName = team || '';
-    return `<div class="ko-score-row ${isWinner?'winner-row':''}">
-      <span class="ko-team-name">${team ? flagHTML(team) : ''} ${team ? displayName : teamLabel}</span>
-      ${team && FANTASY_TEAMS.has(team)?`<span class="ko-owner-tag">${OWNER[team]}</span>`:''}
-      ${isWinner?`<span class="ko-winner-badge">W</span>`:''}
-      <span class="ko-score-display ${isWinner?'winner-score':''}">${gf!==''?gf:'–'}</span>
+  // Team A (home side — right-aligned like fixture-team.home)
+  const tAname = tA || (slotAis3rd ? `<em style="font-size:10px;color:var(--text-muted)">Best 3rd (${r32def.slotA.slice(4)})</em>` : '');
+  const tBname = tB || (slotBis3rd ? `<em style="font-size:10px;color:var(--text-muted)">Best 3rd (${r32def.slotB.slice(4)})</em>` : '');
+
+  const isFTA = tA && FANTASY_TEAMS.has(tA);
+  const iFTB = tB && FANTASY_TEAMS.has(tB);
+
+  const midHTML = hasScore
+    ? `<div class="ko-fixture-mid">
+        <div class="fixture-score ${winA||winB?'':'pending'}">${gfA} – ${gfB}</div>
+        ${winA||winB ? `<div class="fixture-final-badge">Final</div>` : ''}
+        ${pensStr}
+       </div>`
+    : `<div class="ko-fixture-mid">
+        <div class="fixture-score pending">${dateStr}</div>
+        <div style="font-size:10px;color:var(--text-muted);text-align:center">${timeStr}</div>
+       </div>`;
+
+  card.innerHTML = `
+    <div class="ko-match-label">${label}${desc?` <span style="font-weight:400;opacity:0.6">· ${desc}</span>`:''}</div>
+    ${venue ? `<div class="ko-match-schedule">${venue}</div>` : ''}
+    <div class="fixture-row has-score" style="min-height:64px">
+      <div class="fixture-team home ${winA?'winner':''}">
+        ${isFTA?'<span class="fixture-fantasy-dot"></span>':''}
+        <span class="team-name-rank-stack" style="align-items:flex-end">
+          <span class="team-name-flag-row">${tA?flagHTML(tA):''}<span>${tAname}</span></span>
+          ${tA?fifaRankBadge(tA):''}
+          ${isFTA?`<span class="fixture-owner-tag stack-owner">${OWNER[tA]}</span>`:''}
+        </span>
+        ${winA?`<span class="ko-winner-badge">W</span>`:''}
+      </div>
+      ${midHTML}
+      <div class="fixture-team away ${winB?'winner':''}">
+        ${winB?`<span class="ko-winner-badge">W</span>`:''}
+        <span class="team-name-rank-stack" style="align-items:flex-start">
+          <span class="team-name-flag-row">${tB?flagHTML(tB):''}<span>${tBname}</span></span>
+          ${tB?fifaRankBadge(tB):''}
+          ${iFTB?`<span class="fixture-owner-tag stack-owner">${OWNER[tB]}</span>`:''}
+        </span>
+        ${iFTB?'<span class="fixture-fantasy-dot"></span>':''}
+      </div>
     </div>`;
-  }
-
-  card.innerHTML=`
-    <div class="ko-match-label">${label}</div>
-    ${schedHTML}
-    ${desc?`<div class="ko-match-sublabel">${desc}</div>`:''}
-    ${teamRow(tA, tALabel, gfA, winA, slotAis3rd)}
-    <div class="ko-vs-divider">vs</div>
-    ${teamRow(tB, tBLabel, gfB, winB, slotBis3rd)}
-    ${showPens?`
-    <div class="ko-pens-row">
-      <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">Pens:</span>
-      <span class="ko-pens-display">${ms.pensA??'–'}</span>
-      <span style="font-size:11px;color:var(--text-muted);padding:0 2px">–</span>
-      <span class="ko-pens-display">${ms.pensB??'–'}</span>
-      <span style="font-size:11px;color:var(--text-muted);margin-left:4px">(pens)</span>
-    </div>`:''}`;
   return card;
 }
 
