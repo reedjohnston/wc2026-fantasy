@@ -806,63 +806,68 @@ const GROUPS = [
 ];
 
 const R32_MATCHES = [
-  { id:'r32_0',  label:'Match 73', desc:'Grp A 2nd vs Grp B 2nd',            slotA:'A2', slotB:'B2' },
-  { id:'r32_1',  label:'Match 74', desc:'Grp E 1st vs Best 3rd (A/B/C/D/F)', slotA:'E1', slotB:'3rd:A/B/C/D/F' },
-  { id:'r32_2',  label:'Match 75', desc:'Grp F 1st vs Grp C 2nd',            slotA:'F1', slotB:'C2' },
-  { id:'r32_3',  label:'Match 76', desc:'Grp C 1st vs Grp F 2nd',            slotA:'C1', slotB:'F2' },
-  { id:'r32_4',  label:'Match 77', desc:'Grp I 1st vs Best 3rd (C/D/F/G/H)', slotA:'I1', slotB:'3rd:C/D/F/G/H' },
-  { id:'r32_5',  label:'Match 78', desc:'Grp E 2nd vs Grp I 2nd',            slotA:'E2', slotB:'I2' },
-  { id:'r32_6',  label:'Match 79', desc:'Grp A 1st vs Best 3rd (C/E/F/H/I)', slotA:'A1', slotB:'3rd:C/E/F/H/I' },
-  { id:'r32_7',  label:'Match 80', desc:'Grp L 1st vs Best 3rd (E/H/I/J/K)', slotA:'L1', slotB:'3rd:E/H/I/J/K' },
-  { id:'r32_8',  label:'Match 81', desc:'Grp D 1st vs Best 3rd (B/E/F/I/J)', slotA:'D1', slotB:'3rd:B/E/F/I/J' },
-  { id:'r32_9',  label:'Match 82', desc:'Grp G 1st vs Best 3rd (A/E/H/I/J)', slotA:'G1', slotB:'3rd:A/E/H/I/J' },
-  { id:'r32_10', label:'Match 83', desc:'Grp K 2nd vs Grp L 2nd',            slotA:'K2', slotB:'L2' },
-  { id:'r32_11', label:'Match 84', desc:'Grp H 1st vs Grp J 2nd',            slotA:'H1', slotB:'J2' },
-  { id:'r32_12', label:'Match 85', desc:'Grp B 1st vs Best 3rd (E/F/G/I/J)', slotA:'B1', slotB:'3rd:E/F/G/I/J' },
-  { id:'r32_13', label:'Match 86', desc:'Grp J 1st vs Grp H 2nd',            slotA:'J1', slotB:'H2' },
-  { id:'r32_14', label:'Match 87', desc:'Grp K 1st vs Best 3rd (D/E/I/J/L)', slotA:'K1', slotB:'3rd:D/E/I/J/L' },
-  { id:'r32_15', label:'Match 88', desc:'Grp D 2nd vs Grp G 2nd',            slotA:'D2', slotB:'G2' },
+  // Jun 28
+  { id:'r32_0',  label:'Match 73', desc:'South Africa vs Canada',         slotA:'A2', slotB:'B2' },
+  // Jun 29
+  { id:'r32_1',  label:'Match 74', desc:'Germany vs Paraguay',            slotA:'E1', slotB:'3rd:D' },
+  { id:'r32_2',  label:'Match 75', desc:'Netherlands vs Morocco',         slotA:'F1', slotB:'C2' },
+  { id:'r32_3',  label:'Match 76', desc:'Brazil vs Japan',                slotA:'C1', slotB:'F2' },
+  // Jun 30
+  { id:'r32_4',  label:'Match 77', desc:'France vs Sweden',               slotA:'I1', slotB:'3rd:F' },
+  { id:'r32_5',  label:'Match 78', desc:'Ivory Coast vs Norway',          slotA:'E2', slotB:'I2' },
+  { id:'r32_6',  label:'Match 79', desc:'Mexico vs Ecuador',              slotA:'A1', slotB:'3rd:E' },
+  // Jul 1
+  { id:'r32_7',  label:'Match 80', desc:'England vs Senegal',             slotA:'L1', slotB:'3rd:J' },
+  { id:'r32_8',  label:'Match 81', desc:'USA vs Bosnia and Herzegovina',  slotA:'D1', slotB:'3rd:B' },
+  { id:'r32_9',  label:'Match 82', desc:'Belgium vs DR Congo',            slotA:'G1', slotB:'3rd:H' },
+  // Jul 2
+  { id:'r32_10', label:'Match 83', desc:'Croatia vs Ghana',               slotA:'K2', slotB:'L2' },
+  { id:'r32_11', label:'Match 84', desc:'Colombia vs Portugal',           slotA:'H1', slotB:'J2' },
+  // Jul 3
+  { id:'r32_12', label:'Match 85', desc:'Scotland vs Algeria',            slotA:'B1', slotB:'3rd:G' },
+  { id:'r32_13', label:'Match 86', desc:'Argentina vs Cape Verde',        slotA:'J1', slotB:'H2' },
+  { id:'r32_14', label:'Match 87', desc:'Spain vs Austria',               slotA:'K1', slotB:'3rd:I' },
+  { id:'r32_15', label:'Match 88', desc:'Australia vs Egypt',             slotA:'D2', slotB:'G2' },
 ];
 
-// Official KO schedule: date (YYYY-MM-DD) + time in UTC for localKickoff()
-// Times stored as "HH:MM UTC+0" so localKickoff() can convert
+// Official KO schedule — verified from FIFA/CBS/Yahoo confirmed bracket
 const KO_SCHEDULE = {
-  // Round of 32 (Jun 28 – Jul 3) — times in EDT (UTC-4) per official FIFA schedule
-  'r32_0':  { date:'2026-06-28', time:'19:00 UTC-4', venue:'Los Angeles' },
-  'r32_1':  { date:'2026-06-29', time:'20:00 UTC-4', venue:'Boston' },
-  'r32_2':  { date:'2026-06-29', time:'13:00 UTC-4', venue:'Houston' },
-  'r32_3':  { date:'2026-06-29', time:'21:00 UTC-4', venue:'Monterrey' },
-  'r32_4':  { date:'2026-06-30', time:'17:00 UTC-4', venue:'New York/NJ' },
-  'r32_5':  { date:'2026-06-30', time:'13:00 UTC-4', venue:'Dallas' },
-  'r32_6':  { date:'2026-06-30', time:'21:00 UTC-4', venue:'Mexico City' },
-  'r32_7':  { date:'2026-07-01', time:'12:00 UTC-4', venue:'Atlanta' },
-  'r32_8':  { date:'2026-07-01', time:'16:00 UTC-4', venue:'Seattle' },
-  'r32_9':  { date:'2026-07-01', time:'20:00 UTC-4', venue:'San Francisco' },
-  'r32_10': { date:'2026-07-02', time:'15:00 UTC-4', venue:'Los Angeles' },
-  'r32_11': { date:'2026-07-02', time:'19:00 UTC-4', venue:'Toronto' },
-  'r32_12': { date:'2026-07-02', time:'21:00 UTC-4', venue:'Vancouver' },
-  'r32_13': { date:'2026-07-03', time:'14:00 UTC-4', venue:'Dallas' },
-  'r32_14': { date:'2026-07-03', time:'18:00 UTC-4', venue:'Miami' },
-  'r32_15': { date:'2026-07-03', time:'21:30 UTC-4', venue:'Kansas City' },
+  // Round of 32 (Jun 28 – Jul 3)
+  'r32_0':  { date:'2026-06-28', time:'15:00 UTC-4', venue:'Inglewood, CA' },
+  'r32_1':  { date:'2026-06-29', time:'16:30 UTC-4', venue:'Foxborough, MA' },
+  'r32_2':  { date:'2026-06-29', time:'21:00 UTC-5', venue:'Monterrey, Mexico' },
+  'r32_3':  { date:'2026-06-29', time:'13:00 UTC-4', venue:'Houston, TX' },
+  'r32_4':  { date:'2026-06-30', time:'22:00 UTC-4', venue:'East Rutherford, NJ' },
+  'r32_5':  { date:'2026-06-30', time:'13:00 UTC-4', venue:'Arlington, TX' },
+  'r32_6':  { date:'2026-06-30', time:'21:00 UTC-5', venue:'Mexico City, Mexico' },
+  'r32_7':  { date:'2026-07-01', time:'17:00 UTC-4', venue:'East Rutherford, NJ' },
+  'r32_8':  { date:'2026-07-02', time:'17:00 UTC-4', venue:'Kansas City, MO' },
+  'r32_9':  { date:'2026-07-02', time:'21:00 UTC-4', venue:'Seattle, WA' },
+  'r32_10': { date:'2026-07-02', time:'13:00 UTC-4', venue:'Philadelphia, PA' },
+  'r32_11': { date:'2026-07-02', time:'21:00 UTC-4', venue:'Miami Gardens, FL' },
+  'r32_12': { date:'2026-07-03', time:'13:00 UTC-4', venue:'Vancouver, Canada' },
+  'r32_13': { date:'2026-07-03', time:'17:00 UTC-4', venue:'Miami Gardens, FL' },
+  'r32_14': { date:'2026-07-04', time:'14:30 UTC-4', venue:'Kansas City, MO' },
+  'r32_15': { date:'2026-07-03', time:'19:00 UTC-4', venue:'Arlington, TX' },
   // Round of 16 (Jul 4–7)
-  'r16_0':  { date:'2026-07-04', time:'17:00 UTC-4', venue:'Philadelphia' },
-  'r16_1':  { date:'2026-07-04', time:'13:00 UTC-4', venue:'Houston' },
-  'r16_2':  { date:'2026-07-05', time:'16:00 UTC-4', venue:'New York/NJ' },
-  'r16_3':  { date:'2026-07-05', time:'20:00 UTC-4', venue:'Mexico City' },
-  'r16_4':  { date:'2026-07-06', time:'15:00 UTC-4', venue:'Dallas' },
-  'r16_5':  { date:'2026-07-06', time:'20:00 UTC-4', venue:'Seattle' },
-  'r16_6':  { date:'2026-07-07', time:'16:00 UTC-4', venue:'Vancouver' },
-  'r16_7':  { date:'2026-07-07', time:'12:00 UTC-4', venue:'Atlanta' },
+  'r16_0':  { date:'2026-07-04', time:'17:00 UTC-4', venue:'Philadelphia, PA' },
+  'r16_1':  { date:'2026-07-04', time:'13:00 UTC-4', venue:'Houston, TX' },
+  'r16_2':  { date:'2026-07-05', time:'16:00 UTC-4', venue:'East Rutherford, NJ' },
+  'r16_3':  { date:'2026-07-05', time:'20:00 UTC-4', venue:'Mexico City, Mexico' },
+  'r16_4':  { date:'2026-07-06', time:'15:00 UTC-4', venue:'Arlington, TX' },
+  'r16_5':  { date:'2026-07-06', time:'20:00 UTC-4', venue:'Seattle, WA' },
+  'r16_6':  { date:'2026-07-07', time:'16:00 UTC-4', venue:'Vancouver, Canada' },
+  'r16_7':  { date:'2026-07-07', time:'12:00 UTC-4', venue:'Atlanta, GA' },
   // Quarterfinals (Jul 9–11)
-  'qf_0':   { date:'2026-07-09', time:'16:00 UTC-4', venue:'Boston' },
-  'qf_1':   { date:'2026-07-10', time:'15:00 UTC-4', venue:'Los Angeles' },
-  'qf_2':   { date:'2026-07-11', time:'17:00 UTC-4', venue:'Miami' },
-  'qf_3':   { date:'2026-07-11', time:'21:00 UTC-4', venue:'Kansas City' },
+  'qf_0':   { date:'2026-07-09', time:'16:00 UTC-4', venue:'Foxborough, MA' },
+  'qf_1':   { date:'2026-07-10', time:'15:00 UTC-4', venue:'Inglewood, CA' },
+  'qf_2':   { date:'2026-07-11', time:'17:00 UTC-4', venue:'Miami Gardens, FL' },
+  'qf_3':   { date:'2026-07-11', time:'21:00 UTC-4', venue:'Kansas City, MO' },
   // Semifinals (Jul 14–15)
-  'sf_0':   { date:'2026-07-14', time:'15:00 UTC-4', venue:'Dallas' },
-  'sf_1':   { date:'2026-07-15', time:'15:00 UTC-4', venue:'Atlanta' },
+  'sf_0':   { date:'2026-07-14', time:'15:00 UTC-4', venue:'Arlington, TX' },
+  'sf_1':   { date:'2026-07-15', time:'15:00 UTC-4', venue:'Atlanta, GA' },
   // Final (Jul 19)
-  'f_0':    { date:'2026-07-19', time:'15:00 UTC-4', venue:'New York/NJ' },
+  'f_0':    { date:'2026-07-19', time:'15:00 UTC-4', venue:'East Rutherford, NJ' },
 };
 
 const R16_PAIRINGS = [
@@ -963,13 +968,18 @@ function getGroupRanking(letter) {
   });
 }
 
-// "3rd:A/B/C/D/F" → the group letters eligible to fill that best-third-place slot.
+// "3rd:D" → 3rd-place team from Group D (now that bracket is confirmed)
 function thirdSlotGroups(slot) { return slot.slice(4).split('/'); }
 
 function resolveSlot(slot, matchId) {
   if (!slot) return null;
-  // Best-third-place slots are filled by the user via the Knockout-tab picker.
   if (slot.startsWith('3rd:')) {
+    const groups = slot.slice(4).split('/');
+    if (groups.length === 1) {
+      // Confirmed single group — resolve directly from standings
+      return getGroupRanking(groups[0])[2] || null;
+    }
+    // Multiple groups still possible — fall back to user picker
     const grp = state.thirdPlace && state.thirdPlace[matchId];
     return grp ? (getGroupRanking(grp)[2] || null) : null;
   }
