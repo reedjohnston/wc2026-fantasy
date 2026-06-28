@@ -221,7 +221,7 @@
   .ko-section-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);margin-bottom:1rem;padding-bottom:6px;border-bottom:1px solid var(--border-strong);display:flex;align-items:center;gap:10px;}
   .third-collapse-toggle:hover .third-chevron{color:var(--gold);}
   .ko-pts-note{font-family:'DM Sans',sans-serif;font-size:12px;font-weight:400;color:var(--text-muted);letter-spacing:0;}
-  .ko-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;}
+  .ko-grid{display:grid;grid-template-columns:1fr;gap:12px;max-width:640px;margin:0 auto;}
   .ko-match{background:var(--surface);border:0.5px solid var(--border-strong);border-radius:var(--radius-lg);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow 0.18s,transform 0.18s;}
   .ko-match:hover{box-shadow:var(--shadow-md);}
   .ko-fixture-mid{display:flex;flex-direction:column;align-items:center;gap:2px;width:80px;flex-shrink:0;}
@@ -838,23 +838,40 @@ const R32_MATCHES = [
 
 // Official KO schedule — verified from FIFA/CBS/Yahoo confirmed bracket
 const KO_SCHEDULE = {
-  // Round of 32 (Jun 28 – Jul 3)
+  // Round of 32 — venues verified from Yahoo Sports / FIFA official schedule
+  // r32_0:  South Africa vs Canada
   'r32_0':  { date:'2026-06-28', time:'15:00 UTC-4', venue:'Inglewood, CA' },
+  // r32_1:  Germany vs Paraguay
   'r32_1':  { date:'2026-06-29', time:'16:30 UTC-4', venue:'Foxborough, MA' },
+  // r32_2:  Netherlands vs Morocco
   'r32_2':  { date:'2026-06-29', time:'21:00 UTC-5', venue:'Monterrey, Mexico' },
+  // r32_3:  Brazil vs Japan
   'r32_3':  { date:'2026-06-29', time:'13:00 UTC-4', venue:'Houston, TX' },
-  'r32_4':  { date:'2026-06-30', time:'22:00 UTC-4', venue:'East Rutherford, NJ' },
+  // r32_4:  France vs Sweden
+  'r32_4':  { date:'2026-06-30', time:'17:00 UTC-4', venue:'East Rutherford, NJ' },
+  // r32_5:  Ivory Coast vs Norway
   'r32_5':  { date:'2026-06-30', time:'13:00 UTC-4', venue:'Arlington, TX' },
+  // r32_6:  Mexico vs Ecuador
   'r32_6':  { date:'2026-06-30', time:'21:00 UTC-5', venue:'Mexico City, Mexico' },
-  'r32_7':  { date:'2026-07-01', time:'17:00 UTC-4', venue:'East Rutherford, NJ' },
-  'r32_8':  { date:'2026-07-02', time:'17:00 UTC-4', venue:'Kansas City, MO' },
-  'r32_9':  { date:'2026-07-02', time:'21:00 UTC-4', venue:'Seattle, WA' },
-  'r32_10': { date:'2026-07-02', time:'13:00 UTC-4', venue:'Philadelphia, PA' },
-  'r32_11': { date:'2026-07-02', time:'21:00 UTC-4', venue:'Miami Gardens, FL' },
-  'r32_12': { date:'2026-07-03', time:'13:00 UTC-4', venue:'Vancouver, Canada' },
-  'r32_13': { date:'2026-07-03', time:'17:00 UTC-4', venue:'Miami Gardens, FL' },
-  'r32_14': { date:'2026-07-04', time:'14:30 UTC-4', venue:'Kansas City, MO' },
-  'r32_15': { date:'2026-07-03', time:'19:00 UTC-4', venue:'Arlington, TX' },
+  // r32_7:  England vs DR Congo
+  'r32_7':  { date:'2026-07-01', time:'12:00 UTC-4', venue:'Atlanta, GA' },
+  // r32_8:  USA vs Bosnia & Herzegovina
+  'r32_8':  { date:'2026-07-01', time:'20:00 UTC-4', venue:'Santa Clara, CA' },
+  // r32_9:  Belgium vs Senegal
+  'r32_9':  { date:'2026-07-01', time:'16:00 UTC-4', venue:'Seattle, WA' },
+  // r32_10: Australia vs Egypt
+  'r32_10': { date:'2026-07-03', time:'14:00 UTC-4', venue:'Arlington, TX' },
+  // r32_11: Colombia vs Portugal
+  'r32_11': { date:'2026-07-02', time:'19:00 UTC-4', venue:'Toronto, Canada' },
+  // r32_12: Scotland vs Algeria
+  'r32_12': { date:'2026-07-03', time:'03:00 UTC-4', venue:'Vancouver, Canada' },
+  // r32_13: Argentina vs Cape Verde
+  'r32_13': { date:'2026-07-03', time:'18:00 UTC-4', venue:'Miami Gardens, FL' },
+  // r32_14: Spain vs Austria
+  'r32_14': { date:'2026-07-04', time:'01:30 UTC-4', venue:'Kansas City, MO' },
+  // r32_15: Croatia vs Ghana (Colombia vs Ghana per Yahoo = r32_11 slot; Croatia vs Portugal = r32_15)
+  'r32_15': { date:'2026-07-02', time:'15:00 UTC-4', venue:'Los Angeles, CA' },
+  // Round of 16
   // Round of 16 (Jul 4–7)
   'r16_0':  { date:'2026-07-04', time:'17:00 UTC-4', venue:'Philadelphia, PA' },
   'r16_1':  { date:'2026-07-04', time:'13:00 UTC-4', venue:'Houston, TX' },
