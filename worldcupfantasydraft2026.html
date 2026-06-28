@@ -546,6 +546,15 @@
   .modal-stat-val.plain{color:var(--text);text-shadow:none;}
   .modal-stat-lbl{font-size:11px;color:var(--text-muted);letter-spacing:0.06em;text-transform:uppercase;}
   .modal-section-lbl{font-family:'Oswald',sans-serif;font-size:11px;font-weight:600;letter-spacing:0.1em;text-transform:uppercase;color:var(--text-muted);padding:14px 22px 8px;position:relative;}
+  .modal-ko-matchup{padding:12px 16px;background:var(--surface2);border-radius:var(--radius-md);margin:0 14px 4px;border:0.5px solid var(--border-strong);}
+  .modal-ko-teams{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .modal-ko-team{font-size:14px;font-weight:600;display:flex;align-items:center;gap:5px;cursor:pointer;}
+  .modal-ko-team.undrafted{color:var(--text-muted);}
+  .modal-ko-vs{font-size:11px;color:var(--text-muted);flex-shrink:0;}
+  .modal-ko-result{margin-top:8px;font-size:12px;font-weight:600;}
+  .modal-ko-result.win{color:var(--green);}
+  .modal-ko-result.loss{color:#c53030;}
+  .modal-ko-schedule{margin-top:6px;font-size:12px;color:var(--text-muted);}
   .modal-body-pad{padding:0 22px 20px;position:relative;}
 
   /* roster / fixture rows inside modal */
@@ -1226,6 +1235,40 @@ function openTeamModal(team) {
   const rows = countryFixtureRows(team);
   const koReached = KO_ROUNDS.filter(r => d.ko && d.ko[r.key]).map(r => r.key.toUpperCase());
 
+  // Find this team's R32 matchup from the confirmed bracket
+  let r32HTML = '';
+  const r32Match = R32_MATCHES.find(m => {
+    const bt = _bt[m.id];
+    return bt && (bt.tA === team || bt.tB === team);
+  });
+  if (r32Match) {
+    const bt = _bt[r32Match.id];
+    const opponent = bt.tA === team ? bt.tB : bt.tA;
+    const ms = state.koScores[r32Match.id] || {};
+    const sched = KO_SCHEDULE[r32Match.id];
+    const dateStr = sched ? new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
+    const kickoff = sched ? localKickoff(sched.date, sched.time) : '';
+    const venue = sched ? sched.venue : '';
+    const hasResult = ms.winner != null;
+    const won = (bt.tA === team && ms.winner === 'A') || (bt.tB === team && ms.winner === 'B');
+    const scoreStr = ms.gfA != null && ms.gfB != null
+      ? (bt.tA === team ? `${ms.gfA}–${ms.gfB}` : `${ms.gfB}–${ms.gfA}`)
+      : '';
+
+    r32HTML = `<div class="modal-section-lbl">Round of 32</div>
+    <div class="modal-ko-matchup">
+      <div class="modal-ko-teams">
+        <span class="modal-ko-team mine">${flagHTML(team)} ${team}</span>
+        <span class="modal-ko-vs">vs</span>
+        <span class="modal-ko-team ${OWNER[opponent]?'drafted':'undrafted'}" onclick="openTeamModal('${opponent.replace(/'/g,"\\'")}'); event.stopPropagation();">${flagHTML(opponent)} ${opponent}${OWNER[opponent]?` <span class="owner-tag">${OWNER[opponent]}</span>`:''}</span>
+      </div>
+      ${hasResult
+        ? `<div class="modal-ko-result ${won?'win':'loss'}">${won?'✓ Won':'✗ Eliminated'} ${scoreStr ? '· '+scoreStr : ''}</div>`
+        : `<div class="modal-ko-schedule">${dateStr}${kickoff?' · '+kickoff:''}${venue?' · '+venue:''}</div>`
+      }
+    </div>`;
+  }
+
   let html = `<div class="modal-head">
       <div class="modal-eyebrow">Group ${letter || '—'}${alive?'':' · Eliminated'}</div>
       <div class="modal-title">${flagHTML(team)} ${team}</div>
@@ -1244,7 +1287,8 @@ function openTeamModal(team) {
     html += `<div style="margin-top:8px;font-size:12px;color:var(--green-dark);">Knockout: reached ${koReached.join(' → ')}</div>`;
   }
   html += `</div>`;
-  html += `<div class="modal-section-lbl">Matches</div>`;
+  if (r32HTML) html += r32HTML;
+  html += `<div class="modal-section-lbl">Group Stage Matches</div>`;
   html += rows.length ? rows.map(fxRowHTML).join('') : '<div class="modal-body-pad" style="color:var(--text-muted);font-size:13px;">No fixtures found.</div>';
   showModal(html);
 }
