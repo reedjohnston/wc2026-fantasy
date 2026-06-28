@@ -1079,6 +1079,10 @@ function rebuildGroupStats() {
 // ALL groups finish and the best 4 of 8 third-placers are determined.
 // Knockout: losers are immediately eliminated.
 function updateAliveStatus() {
+  // Confirmed 3rd-place teams that did NOT advance — set once all groups done.
+  // 8 of 12 advance; these 4 are out: Iran, South Korea, Scotland, Uruguay.
+  const CONFIRMED_3RD_ELIMINATED = new Set(['Iran', 'South Korea', 'Scotland', 'Uruguay']);
+
   const allGroupsDone = GROUPS.every(g => {
     const mp = g.teams.reduce((s, t) => {
       const d = state.teams[t]; return s + (d ? d.w + d.d + d.l : 0);
@@ -1092,7 +1096,6 @@ function updateAliveStatus() {
     }, 0) / 2;
 
     if (mp < 6) {
-      // Group not finished — everyone alive
       g.teams.forEach(t => { if (state.teams[t]) state.teams[t].alive = true; });
       return;
     }
@@ -1101,17 +1104,11 @@ function updateAliveStatus() {
     ranked.forEach((t, idx) => {
       if (!state.teams[t]) return;
       if (idx === 3) {
-        // Rank 4: always eliminated
         state.teams[t].alive = false;
       } else if (idx === 2) {
-        // Rank 3: alive until all groups done; then determined by best-4-of-8
-        if (!allGroupsDone) {
-          state.teams[t].alive = true;
-        }
-        // If all groups done, keep alive — user can see from bracket who advanced
-        // (we don't auto-eliminate 3rd place teams since 4 of 8 advance)
+        // Once all groups done, use confirmed eliminated list
+        state.teams[t].alive = allGroupsDone ? !CONFIRMED_3RD_ELIMINATED.has(t) : true;
       } else {
-        // Rank 1 or 2: always advance
         state.teams[t].alive = true;
       }
     });
@@ -1591,13 +1588,14 @@ function addThirdPlacePanel(container) {
       ? '<tr class="third-cutline"><td colspan="6"><span>— Cutline —</span></td></tr>'
       : '';
 
-    return `<tr class="${rank <= ADVANCE ? 'third-advancing' : ''} ${isFT ? 'third-fantasy' : ''}">
+    const eliminated = state.teams[r.team] && state.teams[r.team].alive === false;
+    return `<tr class="${rank <= ADVANCE ? 'third-advancing' : ''} ${isFT ? 'third-fantasy' : ''} ${eliminated ? 'third-eliminated' : ''}">
       <td class="third-rank">${rank}</td>
-      <td class="third-team"><span class="third-flag">${flagHTML(r.team)}</span>${r.team}${isFT ? `<span class="owner-tag">${OWNER[r.team]}</span>` : ''}</td>
-      <td class="r">Grp ${r.group}</td>
-      <td class="r">${r.mp}</td>
-      <td class="r" style="font-weight:600">${r.pts}</td>
-      <td class="r" style="color:${r.gd>0?'var(--green-dark)':r.gd<0?'#c53030':'var(--text-muted)'}">${gdStr}</td>
+      <td class="third-team"><span class="third-flag" style="${eliminated?'opacity:0.45':''}">${flagHTML(r.team)}</span><span style="${eliminated?'text-decoration:line-through;opacity:0.5':''}">${r.team}</span>${isFT ? `<span class="owner-tag" style="${eliminated?'opacity:0.45':''}">${OWNER[r.team]}</span>` : ''}</td>
+      <td class="r" style="${eliminated?'opacity:0.4':''}">Grp ${r.group}</td>
+      <td class="r" style="${eliminated?'opacity:0.4':''}">${r.mp}</td>
+      <td class="r" style="font-weight:600;${eliminated?'opacity:0.4':''}">${r.pts}</td>
+      <td class="r" style="color:${r.gd>0?'var(--green-dark)':r.gd<0?'#c53030':'var(--text-muted)'};${eliminated?'opacity:0.4':''}">${gdStr}</td>
     </tr>${cutlineAfter}`;
   }).join('');
 
