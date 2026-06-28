@@ -12,7 +12,7 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install dependencies
         run: pip install cairosvg requests --quiet --break-system-packages
@@ -21,6 +21,7 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import json, sys, os, requests
+          from datetime import datetime, timedelta, timezone
 
           MANAGERS = [
             {"name": "Brian",   "teams": ["Portugal","United States","Norway","Tunisia"]},
@@ -37,74 +38,84 @@ jobs:
 
           NAME_MAP = {
             "Bosnia & Herzegovina": "Bosnia and Herzegovina",
-            "USA": "United States",
-            "Korea Republic": "South Korea",
-            "Curacao": "Curaçao",
+            "Bosnia-Herzegovina": "Bosnia and Herzegovina",
+            "USA": "United States", "United States": "United States",
+            "Korea Republic": "South Korea", "South Korea": "South Korea",
+            "Curacao": "Curaçao", "Curaçao": "Curaçao",
+            "Türkiye": "Turkey", "Turkiye": "Turkey",
+            "Ivory Coast": "Ivory Coast", "Côte d'Ivoire": "Ivory Coast",
+            "DR Congo": "DR Congo", "Congo DR": "DR Congo",
+            "Czechia": "Czech Republic", "Czech Republic": "Czech Republic",
+            "Cape Verde Islands": "Cape Verde", "Cape Verde": "Cape Verde",
           }
+          def norm(n): return NAME_MAP.get(n, n)
 
-          # ── Fetch scores ────────────────────────────────────────────────────
-          URLS = [
-            ("worldcup26.ir", "https://worldcup26.ir/get/games", {
-              "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-              "Accept": "application/json, text/plain, */*",
-              "Referer": "https://worldcup26.ir/",
-              "Origin": "https://worldcup26.ir",
-            }),
-            ("openfootball", "https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json", {}),
-          ]
+          # ── Fetch from ESPN per-day (range queries are unreliable) ──────────
+          start = datetime(2026, 6, 11, tzinfo=timezone.utc)
+          today = datetime.now(timezone.utc)
+          cutoff = min(today, datetime(2026, 7, 19, tzinfo=timezone.utc))
 
-          matches = []
-          source = ""
-          for src, url, headers in URLS:
+          all_events = {}
+          d = start
+          while d <= cutoff:
+            date_str = d.strftime('%Y%m%d')
             try:
-              r = requests.get(url, headers=headers, timeout=15)
+              url = f"https://site.api.espn.com/apis/site/v2/sports/soccer/fifa.world/scoreboard?dates={date_str}&limit=20"
+              r = requests.get(url, timeout=10,
+                headers={"User-Agent": "Mozilla/5.0 (compatible; bot/1.0)"})
               r.raise_for_status()
               data = r.json()
-              if src == "openfootball":
-                raw = data.get("matches", [])
-                matches = [
-                  {"home_team": m["team1"], "away_team": m["team2"],
-                   "home_score": m["score1"], "away_score": m["score2"],
-                   "finished": "TRUE"}
-                  for m in raw
-                  if m.get("group") and "score1" in m and "score2" in m
-                ]
-              else:
-                matches = data if isinstance(data, list) else data.get("games", data.get("data", data.get("matches", [])))
-              if matches:
-                source = src
-                print(f"Got {len(matches)} matches from {src}")
-                break
-            except Exception as e:
-              print(f"{src} failed: {e}")
-              continue
+              for e in data.get("events", []):
+                if e.get("id") not in all_events:
+                  all_events[e["id"]] = e
+            except Exception as ex:
+              print(f"ESPN {date_str} failed: {ex}")
+            d += timedelta(days=1)
+
+          events = list(all_events.values())
+          print(f"ESPN: {len(events)} total events fetched")
+
+          matches = []
+          for e in events:
+            comp = (e.get("competitions") or [{}])[0]
+            st = ((comp.get("status") or e.get("status") or {}).get("type") or {})
+            state_ = st.get("state")
+            if state_ != "post":
+              continue  # only completed matches
+            competitors = comp.get("competitors", [])
+            home = next((c for c in competitors if c.get("homeAway") == "home"), {})
+            away = next((c for c in competitors if c.get("homeAway") == "away"), {})
+            t1 = norm(home.get("team", {}).get("displayName", ""))
+            t2 = norm(away.get("team", {}).get("displayName", ""))
+            if not t1 or not t2: continue
+            s1 = int(home.get("score") or 0)
+            s2 = int(away.get("score") or 0)
+            matches.append({
+              "home_team": t1, "away_team": t2,
+              "home_score": s1, "away_score": s2,
+              "finished": "TRUE", "status": "FT",
+              "date": e.get("date", "")
+            })
 
           if not matches:
-            print("No data from any source, keeping existing files")
+            print("No completed matches from ESPN — keeping existing scores.json")
             sys.exit(0)
 
-          # Save scores.json
+          print(f"Writing {len(matches)} completed matches to scores.json")
           with open("scores.json", "w") as f:
             json.dump(matches, f)
-          print("scores.json written")
 
-          # ── Compute standings ───────────────────────────────────────────────
-          team_pts = {}
-          team_gd = {}
+          # ── Compute standings ────────────────────────────────────────────────
+          team_pts, team_gd = {}, {}
           for m in matches:
-            t1 = NAME_MAP.get(m.get("home_team",""), m.get("home_team",""))
-            t2 = NAME_MAP.get(m.get("away_team",""), m.get("away_team",""))
-            finished = str(m.get("finished","")).upper() == "TRUE"
-            if not finished:
-              continue
-            s1 = int(m.get("home_score") or 0)
-            s2 = int(m.get("away_score") or 0)
+            t1, t2 = m["home_team"], m["away_team"]
+            s1, s2 = int(m["home_score"]), int(m["away_score"])
             team_pts.setdefault(t1, 0); team_pts.setdefault(t2, 0)
             team_gd.setdefault(t1, 0);  team_gd.setdefault(t2, 0)
-            team_gd[t1] += s1 - s2;     team_gd[t2] += s2 - s1
-            if s1 > s2:   team_pts[t1] += 3
-            elif s2 > s1: team_pts[t2] += 3
-            else:          team_pts[t1] += 1; team_pts[t2] += 1
+            team_gd[t1] += s1-s2; team_gd[t2] += s2-s1
+            if s1 > s2:    team_pts[t1] += 3
+            elif s2 > s1:  team_pts[t2] += 3
+            else:           team_pts[t1] += 1; team_pts[t2] += 1
 
           standings = []
           for m in MANAGERS:
@@ -113,14 +124,14 @@ jobs:
             standings.append({"name": m["name"].upper(), "teams": m["teams"], "pts": pts, "gd": gd})
           standings.sort(key=lambda x: (-x["pts"], -x["gd"]))
 
-          # ── Generate preview SVG ────────────────────────────────────────────
-          rank_colors = ["#FAC775", "#D3D1C7", "#F5C4B3"]
+          # ── Generate preview image ───────────────────────────────────────────
+          rank_colors = ["#FAC775","#D3D1C7","#F5C4B3"]
           rows = ""
           for i, m in enumerate(standings[:5]):
             y = 258 + i * 58
-            rc   = rank_colors[i] if i < 3 else "rgba(255,255,255,0.35)"
-            nc   = "white"           if i < 3 else "rgba(255,255,255,0.65)"
-            pts_str = str(m["pts"])  if m["pts"] > 0 else "—"
+            rc = rank_colors[i] if i < 3 else "rgba(255,255,255,0.35)"
+            nc = "white" if i < 3 else "rgba(255,255,255,0.65)"
+            pts_str = str(m["pts"]) if m["pts"] > 0 else "—"
             teams_str = " · ".join(m["teams"])
             bg = 'fill="rgba(250,199,117,0.08)"' if i == 0 else 'fill="rgba(255,255,255,0.03)"'
             rows += f'''
@@ -132,12 +143,10 @@ jobs:
               <text x="1110" y="{y+34}" font-family="Arial Black,Arial,sans-serif" font-size="26" font-weight="900" fill="#1D9E75" text-anchor="end">{pts_str}</text>'''
 
           svg = f"""<svg width="1200" height="630" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stop-color="#0a1a10"/>
-                <stop offset="100%" stop-color="#0f2a18"/>
-              </linearGradient>
-            </defs>
+            <defs><linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#0a1a10"/>
+              <stop offset="100%" stop-color="#0f2a18"/>
+            </linearGradient></defs>
             <rect width="1200" height="630" fill="url(#bg)"/>
             <rect width="1200" height="5" fill="#1D9E75"/>
             <text x="60" y="90"  font-family="Arial Black,Arial,sans-serif" font-size="15" font-weight="900" fill="#1D9E75" letter-spacing="5">2026 FIFA WORLD CUP</text>
