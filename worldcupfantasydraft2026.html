@@ -1352,33 +1352,58 @@ function renderNextUp() {
   const mine = new Set(mgr ? mgr.teams : []);
   const now = Date.now();
 
-  const enriched = GROUP_FIXTURES.map(m => {
+  // ── Build unified fixture list: group stage + knockout rounds ────────────
+  const enriched = [];
+
+  // Group stage matches
+  GROUP_FIXTURES.forEach(m => {
     const d = fixtureScoreData(m);
-    return { m, d, kms: parseKickoffMs(m.date, m.time) };
+    enriched.push({ m, d, kms: parseKickoffMs(m.date, m.time), isKO: false });
   });
 
-  // Live matches: kicked off, within 3h window, not yet final
+  // Knockout matches from confirmed bracket
+  Object.entries(KO_SCHEDULE).forEach(([id, sched]) => {
+    const bt = _bt[id];
+    if (!bt || !bt.tA || !bt.tB) return; // skip if teams not yet known
+    const ms = state.koScores[id] || {};
+    const isFinal = !!ms.winner;
+    const isLiveKO = !isFinal && KO_STATUS && KO_STATUS.live && ms.gfA != null;
+    const hasScore = ms.gfA != null && ms.gfB != null;
+    const roundLabel = id.startsWith('r32') ? 'Round of 32'
+      : id.startsWith('r16') ? 'Round of 16'
+      : id.startsWith('qf') ? 'Quarter-final'
+      : id.startsWith('sf') ? 'Semi-final'
+      : 'Final';
+    const d = {
+      t1n: bt.tA, t2n: bt.tB,
+      s1: ms.gfA ?? 0, s2: ms.gfB ?? 0,
+      hasScore, isFinal,
+      kickoff: localKickoff(sched.date, sched.time),
+    };
+    enriched.push({
+      m: { date: sched.date, time: sched.time, group: roundLabel, round: sched.venue },
+      d, kms: parseKickoffMs(sched.date, sched.time),
+      isKO: true, koId: id, ms,
+    });
+  });
+
+  // ── Live matches ─────────────────────────────────────────────────────────
   const liveMatches = enriched
     .filter(x => x.kms && now >= x.kms && now <= x.kms + 3*60*60*1000 && !x.d.isFinal)
     .sort((a,b) => a.kms - b.kms);
 
-  // Upcoming matches sorted by kickoff
+  // ── Upcoming matches ──────────────────────────────────────────────────────
   const upcoming = enriched
-    .filter(x => x.kms && x.kms > now)
+    .filter(x => x.kms && x.kms > now && !x.d.isFinal)
     .sort((a,b) => a.kms - b.kms);
 
-  // Pick the set to show: live first, else upcoming
   let picks = [];
   if (liveMatches.length > 0) {
-    // Show all live matches (concurrent kick-offs during group stage)
     const firstKms = liveMatches[0].kms;
-    picks = liveMatches.filter(x => Math.abs(x.kms - firstKms) < 5 * 60 * 1000);
-    picks = picks.slice(0, 2);
+    picks = liveMatches.filter(x => Math.abs(x.kms - firstKms) < 5 * 60 * 1000).slice(0, 2);
   } else if (upcoming.length > 0) {
-    // Show next 1-2 matches if they kick off within 5 minutes of each other
     const firstKms = upcoming[0].kms;
-    picks = upcoming.filter(x => Math.abs(x.kms - firstKms) < 5 * 60 * 1000);
-    picks = picks.slice(0, 2);
+    picks = upcoming.filter(x => Math.abs(x.kms - firstKms) < 5 * 60 * 1000).slice(0, 2);
   }
 
   if (!picks.length) { el.className = 'next-up'; el.innerHTML = ''; return; }
@@ -1391,16 +1416,22 @@ function renderNextUp() {
   function matchHTML(pick) {
     const { m, d } = pick;
     const mine1 = mine.has(d.t1n), mine2 = mine.has(d.t2n);
-    const storedScore = state.fixtureScores
-      ? (state.fixtureScores[d.t1n+'|'+d.t2n] || state.fixtureScores[d.t2n+'|'+d.t1n] || null)
-      : null;
-    const matchClock = storedScore?.clock || '';
+    // For KO matches get clock from koScores; for group matches from fixtureScores
+    let matchClock = '';
+    if (pick.isKO) {
+      matchClock = (pick.ms && pick.ms.clock) || '';
+    } else {
+      const storedScore = state.fixtureScores
+        ? (state.fixtureScores[d.t1n+'|'+d.t2n] || state.fixtureScores[d.t2n+'|'+d.t1n] || null)
+        : null;
+      matchClock = storedScore?.clock || '';
+    }
     const dateFmt = new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'long', month:'short', day:'numeric'});
     const clockStr = matchClock ? `<span class="next-up-clock">${matchClock}</span>` : '';
     const mid = isLive
       ? `<div class="next-up-score">${d.hasScore ? d.s1+' – '+d.s2 : 'LIVE'}</div>${clockStr}<div class="next-up-kick">in progress</div>`
       : `<div class="next-up-kick">${dateFmt}<br>${d.kickoff}</div>`;
-    const venue = getVenue(d.t1n, d.t2n);
+    const venue = pick.isKO ? m.round : getVenue(d.t1n, d.t2n);
     const myTeamLabel = (mine1 || mine2) && MY_MANAGER
       ? ` · <span style="color:var(--green-bright);font-weight:600">${MY_MANAGER}'s team</span>` : '';
     return `
@@ -1410,7 +1441,7 @@ function renderNextUp() {
           <div class="next-up-mid">${mid}</div>
           <div class="next-up-team t2"><span class="team-name-rank-stack" style="align-items:flex-start"><span class="team-name-flag-row">${flagHTML(d.t2n)}<span>${d.t2n}</span></span>${fifaRankBadge(d.t2n)}${OWNER[d.t2n]?`<span class="fixture-owner-tag stack-owner">${OWNER[d.t2n]}</span>`:''}</span>${mine2?'<span class="mine-dot"></span>':''}</div>
         </div>
-        <div class="next-up-meta">${m.group} · ${m.round}${venue?` · ${venue}`:''}${myTeamLabel}</div>
+        <div class="next-up-meta">${m.group}${venue?` · ${venue}`:''}${myTeamLabel}</div>
       </div>`;
   }
 
