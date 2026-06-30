@@ -1447,7 +1447,14 @@ function renderNextUp() {
 
   // ── Live matches ─────────────────────────────────────────────────────────
   const liveMatches = enriched
-    .filter(x => x.kms && now >= x.kms && now <= x.kms + 3*60*60*1000 && !x.d.isFinal)
+    .filter(x => {
+      if (x.d.isFinal) return false;
+      // For KO matches: trust the API signal (score present, no winner yet) as primary
+      if (x.isKO && x.ms && x.ms.gfA != null && !x.ms.winner) return true;
+      // KO matches can run 120+ min (extra time) — extend window to 4h
+      const window = x.isKO ? 4*60*60*1000 : 3*60*60*1000;
+      return x.kms && now >= x.kms && now <= x.kms + window;
+    })
     .sort((a,b) => a.kms - b.kms);
 
   // ── Upcoming matches ──────────────────────────────────────────────────────
