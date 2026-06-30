@@ -1484,7 +1484,14 @@ function renderNextUp() {
     // For KO matches get clock from koScores; for group matches from fixtureScores
     let matchClock = '';
     if (pick.isKO) {
-      matchClock = (pick.ms && pick.ms.clock) || '';
+      const st = pick.ms?.statusShort || '';
+      const rawClock = pick.ms?.clock || '';
+      const detail = rawClock.toLowerCase();
+      if (detail.includes('half time') || detail === 'ht' || st === 'HT') matchClock = 'Half Time';
+      else if (detail.includes('penalty') || detail.includes('pk') || st === 'PEN' || st === 'BP') matchClock = 'Penalty Shootout';
+      else if (detail.includes('extra time') || detail.includes('et') || st === 'ET') matchClock = rawClock ? rawClock : 'Extra Time';
+      else if (rawClock) matchClock = rawClock;
+      else if (st === 'LIVE') matchClock = 'Live';
     } else {
       const storedScore = state.fixtureScores
         ? (state.fixtureScores[d.t1n+'|'+d.t2n] || state.fixtureScores[d.t2n+'|'+d.t1n] || null)
@@ -2113,7 +2120,9 @@ function syncKnockoutFromApi(allFixtures) {
     const gh = f.goals.home ?? 0, ga = f.goals.away ?? 0;
     const gfA = homeIsA ? gh : ga, gfB = homeIsA ? ga : gh;
     const ms = state.koScores[id] || {};
-    ms.gfA = gfA; ms.gfB = gfB; // refresh running score (live) or final score (done)
+    ms.gfA = gfA; ms.gfB = gfB;
+    ms.clock = f.fixture.clock || '';    // e.g. "45'", "HT", "90'+2", "ET", "PK"
+    ms.statusShort = st;                 // FT, PEN, LIVE, HT, ET, etc.
 
     if (done) {
       const pen = f.score && f.score.penalty;
