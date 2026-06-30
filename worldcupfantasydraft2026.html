@@ -852,7 +852,7 @@ const KO_SCHEDULE = {
   // r32_5:  Ivory Coast vs Norway
   'r32_5':  { date:'2026-06-30', time:'13:00 UTC-4', venue:'Arlington, TX' },
   // r32_6:  Mexico vs Ecuador
-  'r32_6':  { date:'2026-06-30', time:'21:00 UTC-5', venue:'Mexico City, Mexico' },
+  'r32_6':  { date:'2026-06-30', time:'18:00 UTC-5', venue:'Mexico City, Mexico' },
   // r32_7:  England vs DR Congo
   'r32_7':  { date:'2026-07-01', time:'12:00 UTC-4', venue:'Atlanta, GA' },
   // r32_8:  USA vs Bosnia & Herzegovina
@@ -864,11 +864,11 @@ const KO_SCHEDULE = {
   // r32_11: Colombia vs Portugal
   'r32_11': { date:'2026-07-02', time:'19:00 UTC-4', venue:'Toronto, Canada' },
   // r32_12: Scotland vs Algeria
-  'r32_12': { date:'2026-07-03', time:'03:00 UTC-4', venue:'Vancouver, Canada' },
+  'r32_12': { date:'2026-07-03', time:'15:00 UTC-7', venue:'Vancouver, Canada' },
   // r32_13: Argentina vs Cape Verde
   'r32_13': { date:'2026-07-03', time:'18:00 UTC-4', venue:'Miami Gardens, FL' },
   // r32_14: Spain vs Austria
-  'r32_14': { date:'2026-07-04', time:'01:30 UTC-4', venue:'Kansas City, MO' },
+  'r32_14': { date:'2026-07-04', time:'13:30 UTC-4', venue:'Kansas City, MO' },
   // r32_15: Croatia vs Ghana (Colombia vs Ghana per Yahoo = r32_11 slot; Croatia vs Portugal = r32_15)
   'r32_15': { date:'2026-07-02', time:'15:00 UTC-4', venue:'Los Angeles, CA' },
   // Round of 16
@@ -2566,12 +2566,10 @@ function setFixtureSort(mode) {
 // Convert "2026-06-11" + "13:00 UTC-6" → local time string
 function localKickoff(date, time) {
   try {
-    // Parse "HH:MM UTC±H" or "HH:MM UTC±HH"
     const match = time.match(/^(\d{1,2}):(\d{2})\s*UTC([+-]\d+)/);
     if (!match) return time;
     const [, hh, mm, off] = match;
     const offsetMins = parseInt(off) * 60;
-    // Build UTC timestamp
     const utcMs = Date.UTC(
       parseInt(date.slice(0,4)),
       parseInt(date.slice(5,7)) - 1,
