@@ -92,8 +92,8 @@
   .lb-table td { padding:11px 14px; font-size:14px; color:var(--text); border-bottom:0.5px solid var(--border); vertical-align:middle; }
   .lb-table tr:last-child td { border-bottom:none; }
   .lb-table tbody tr:hover td { background:var(--surface2); }
-  .lb-table tbody tr:first-child td { background:linear-gradient(90deg, rgba(242,193,78,0.18), transparent 45%); box-shadow:inset 3px 0 0 var(--gold); }
-  .lb-table tbody tr:first-child:hover td { background:linear-gradient(90deg, rgba(242,193,78,0.26), var(--surface2) 50%); }
+  .lb-table tbody tr:first-child td { }
+  .lb-table tbody tr:first-child:hover td { background:var(--surface2); }
   .lb-table td.r { text-align:right; font-variant-numeric:tabular-nums; }
   .lb-status-row { display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap; margin-bottom:0.6rem; }
   .lb-status { display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text-muted); }
@@ -103,9 +103,9 @@
   .rank-move.up { color:var(--green); }
   .rank-move.down { color:#c53030; }
   .rank-badge { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; font-size:13px; font-weight:700; box-shadow:inset 0 1px 1px rgba(255,255,255,0.5), 0 1px 2px rgba(0,0,0,0.12); }
-  .rank-1{background:linear-gradient(140deg,#FFE6A8,var(--gold-deep));color:var(--gold-dark);}
-  .rank-2{background:linear-gradient(140deg,#EEEDE8,var(--silver));color:var(--silver-dark);}
-  .rank-3{background:linear-gradient(140deg,#FAD9CC,var(--bronze));color:var(--bronze-dark);}
+  .rank-1{background:var(--surface2);color:var(--text-muted);font-weight:500;}
+  .rank-2{background:var(--surface2);color:var(--text-muted);font-weight:500;}
+  .rank-3{background:var(--surface2);color:var(--text-muted);font-weight:500;}
   .rank-n{background:var(--surface2);color:var(--text-muted);font-weight:500;}
   .manager-name{font-family:'Oswald',sans-serif;font-weight:600;font-size:19px;letter-spacing:0.04em;text-transform:uppercase;color:var(--text);}
   .manager-name .first-letter{font-size:1.1em;line-height:0;vertical-align:baseline;}
@@ -462,9 +462,9 @@
   .ko-score-input{font-family:'DM Mono',monospace;}
 
   /* Rank badges: floodlit medallions */
-  .rank-1{background:radial-gradient(circle at 35% 30%,#FFE9A8,var(--gold-deep));color:var(--gold-dark);box-shadow:inset 0 1px 2px rgba(255,255,255,0.6);}
-  .rank-2{background:radial-gradient(circle at 35% 30%,#F2F0EA,var(--silver));color:var(--silver-dark);box-shadow:0 0 12px rgba(216,214,204,0.3), inset 0 1px 2px rgba(255,255,255,0.6);}
-  .rank-3{background:radial-gradient(circle at 35% 30%,#F0C49A,var(--bronze));color:var(--bronze-dark);box-shadow:0 0 12px rgba(224,163,114,0.3), inset 0 1px 2px rgba(255,255,255,0.5);}
+  .rank-1{background:var(--surface2);color:var(--text-muted);font-weight:500;}
+  .rank-2{background:var(--surface2);color:var(--text-muted);font-weight:500;}
+  .rank-3{background:var(--surface2);color:var(--text-muted);font-weight:500;}
   .rank-n{background:var(--surface2);color:var(--text-muted);box-shadow:inset 0 0 0 1px var(--border);}
 
   /* Badges & pills get warm glow */
