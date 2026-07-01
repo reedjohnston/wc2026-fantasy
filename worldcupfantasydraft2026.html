@@ -1762,22 +1762,35 @@ function renderKnockout() {
     content.appendChild(warn);
   }
 
+  // Sort a matches array by KO_SCHEDULE date+time
+  function bySchedule(arr) {
+    return [...arr].sort((a, b) => {
+      const sa = KO_SCHEDULE[a.id], sb = KO_SCHEDULE[b.id];
+      if (!sa && !sb) return 0;
+      if (!sa) return 1;
+      if (!sb) return -1;
+      const msA = parseKickoffMs(sa.date, sa.time) || 0;
+      const msB = parseKickoffMs(sb.date, sb.time) || 0;
+      return msA - msB;
+    });
+  }
+
   addThirdPlacePanel(content);
 
   addKORound(content, 'Round of 32', 4,
-    R32_MATCHES.map(m => ({ id:m.id, label:m.label, desc:m.desc, tA:_bt[m.id]?.tA, tB:_bt[m.id]?.tB }))
+    bySchedule(R32_MATCHES.map(m => ({ id:m.id, label:m.label, desc:m.desc, tA:_bt[m.id]?.tA, tB:_bt[m.id]?.tB })))
   );
   addKORound(content, 'Round of 16', 5,
-    R16_PAIRINGS.map((pair, i) => {
+    bySchedule(R16_PAIRINGS.map((pair, i) => {
       const id='r16_'+i;
       return { id, label:'Match '+(i+1), desc:`R32 M${pair[0]+1} winner vs R32 M${pair[1]+1} winner`, tA:_bt[id]?.tA, tB:_bt[id]?.tB };
-    })
+    }))
   );
   addKORound(content, 'Quarterfinals', 6,
-    [0,1,2,3].map(i => { const id='qf_'+i; return { id, label:'QF '+(i+1), desc:'', tA:_bt[id]?.tA, tB:_bt[id]?.tB }; })
+    bySchedule([0,1,2,3].map(i => { const id='qf_'+i; return { id, label:'QF '+(i+1), desc:'', tA:_bt[id]?.tA, tB:_bt[id]?.tB }; }))
   );
   addKORound(content, 'Semifinals', 7,
-    [0,1].map(i => { const id='sf_'+i; return { id, label:'SF '+(i+1), desc:'', tA:_bt[id]?.tA, tB:_bt[id]?.tB }; })
+    bySchedule([0,1].map(i => { const id='sf_'+i; return { id, label:'SF '+(i+1), desc:'', tA:_bt[id]?.tA, tB:_bt[id]?.tB }; }))
   );
   addKORound(content, 'Final 🏆', 10,
     [{ id:'f_0', label:'World Cup Final', desc:'', tA:_bt['f_0']?.tA, tB:_bt['f_0']?.tB }]
