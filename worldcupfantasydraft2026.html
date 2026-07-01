@@ -111,6 +111,7 @@
   .manager-name .first-letter{font-size:1.1em;line-height:0;vertical-align:baseline;}
   .manager-teams-mobile{display:none;}
   .mp-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
+  .gf-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
   .pts-cell{font-weight:700;font-size:23px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:0;text-shadow:0 0 12px var(--gold-glow);}
   .gd-cell{font-size:17px;font-family:'DM Mono',monospace;letter-spacing:0;}
   .team-chips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -692,6 +693,7 @@
           <th style="width:40px">#</th><th>Manager</th><th>Teams</th>
           <th class="r" style="width:70px">Pts</th>
           <th class="r" style="width:60px">GD</th>
+          <th class="r" style="width:50px">GF</th>
           <th class="r" style="width:44px">MP</th>
         </tr></thead>
         <tbody id="lb-body"></tbody>
@@ -1252,32 +1254,38 @@ function openTeamModal(team) {
   const rows = countryFixtureRows(team);
   const koReached = KO_ROUNDS.filter(r => d.ko && d.ko[r.key]).map(r => r.key.toUpperCase());
 
-  // Find this team's R32 matchup from the confirmed bracket
-  let r32HTML = '';
-  const r32Match = R32_MATCHES.find(m => {
-    const bt = _bt[m.id];
-    return bt && (bt.tA === team || bt.tB === team);
-  });
-  if (r32Match) {
-    const bt = _bt[r32Match.id];
+  // Build KO matchup cards for every round this team has or will play
+  const KO_ROUND_IDS = [
+    { ids: R32_MATCHES.map(m => m.id), label: 'Round of 32' },
+    { ids: ['r16_0','r16_1','r16_2','r16_3','r16_4','r16_5','r16_6','r16_7'], label: 'Round of 16' },
+    { ids: ['qf_0','qf_1','qf_2','qf_3'], label: 'Quarter-final' },
+    { ids: ['sf_0','sf_1'], label: 'Semi-final' },
+    { ids: ['f_0'], label: 'Final' },
+  ];
+
+  function koMatchupHTML(roundLabel, matchId) {
+    const bt = _bt[matchId];
+    if (!bt || (!bt.tA && !bt.tB)) return '';
+    if (bt.tA !== team && bt.tB !== team) return '';
     const opponent = bt.tA === team ? bt.tB : bt.tA;
-    const ms = state.koScores[r32Match.id] || {};
-    const sched = KO_SCHEDULE[r32Match.id];
+    const ms = state.koScores[matchId] || {};
+    const sched = KO_SCHEDULE[matchId];
     const dateStr = sched ? new Date(sched.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) : '';
     const kickoff = sched ? localKickoff(sched.date, sched.time) : '';
     const venue = sched ? sched.venue : '';
     const hasResult = ms.winner != null;
     const won = (bt.tA === team && ms.winner === 'A') || (bt.tB === team && ms.winner === 'B');
     const scoreStr = ms.gfA != null && ms.gfB != null
-      ? (bt.tA === team ? `${ms.gfA}–${ms.gfB}` : `${ms.gfB}–${ms.gfA}`)
-      : '';
-
-    r32HTML = `<div class="modal-section-lbl">Round of 32</div>
+      ? (bt.tA === team ? `${ms.gfA}–${ms.gfB}` : `${ms.gfB}–${ms.gfA}`) : '';
+    const oppHTML = opponent
+      ? `<span class="modal-ko-team ${OWNER[opponent]?'drafted':'undrafted'}" onclick="openTeamModal('${opponent.replace(/'/g,"\\'")}'); event.stopPropagation();">${flagHTML(opponent)} ${opponent}${OWNER[opponent]?` <span class="owner-tag">${OWNER[opponent]}</span>`:''}</span>`
+      : `<span class="modal-ko-team undrafted" style="font-style:italic">TBD</span>`;
+    return `<div class="modal-section-lbl">${roundLabel}</div>
     <div class="modal-ko-matchup">
       <div class="modal-ko-teams">
         <span class="modal-ko-team mine">${flagHTML(team)} ${team}</span>
         <span class="modal-ko-vs">vs</span>
-        <span class="modal-ko-team ${OWNER[opponent]?'drafted':'undrafted'}" onclick="openTeamModal('${opponent.replace(/'/g,"\\'")}'); event.stopPropagation();">${flagHTML(opponent)} ${opponent}${OWNER[opponent]?` <span class="owner-tag">${OWNER[opponent]}</span>`:''}</span>
+        ${oppHTML}
       </div>
       ${hasResult
         ? `<div class="modal-ko-result ${won?'win':'loss'}">${won?'✓ Won':'✗ Eliminated'} ${scoreStr ? '· '+scoreStr : ''}</div>`
@@ -1285,6 +1293,11 @@ function openTeamModal(team) {
       }
     </div>`;
   }
+
+  let koHTML = '';
+  KO_ROUND_IDS.forEach(({ ids, label }) => {
+    ids.forEach(id => { koHTML += koMatchupHTML(label, id); });
+  });
 
   let html = `<div class="modal-head">
       <div class="modal-eyebrow">Group ${letter || '—'}${alive?'':' · Eliminated'}</div>
@@ -1304,7 +1317,7 @@ function openTeamModal(team) {
     html += `<div style="margin-top:8px;font-size:12px;color:var(--green-dark);">Knockout: reached ${koReached.join(' → ')}</div>`;
   }
   html += `</div>`;
-  if (r32HTML) html += r32HTML;
+  if (koHTML) html += koHTML;
   html += `<div class="modal-section-lbl">Group Stage Matches</div>`;
   html += rows.length ? rows.map(fxRowHTML).join('') : '<div class="modal-body-pad" style="color:var(--text-muted);font-size:13px;">No fixtures found.</div>';
   showModal(html);
@@ -1355,8 +1368,13 @@ function closeModal() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
 
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
+function mgrGF(m) { return m.teams.reduce((s,t) => s + groupGF(t), 0); }
 function lbSorted() {
-  return [...MANAGERS].sort((a,b)=>{ const d=mgrPts(b)-mgrPts(a); return d!==0?d:mgrGD(b)-mgrGD(a); });
+  return [...MANAGERS].sort((a,b)=>{
+    const dp = mgrPts(b) - mgrPts(a); if (dp !== 0) return dp;
+    const dg = mgrGD(b) - mgrGD(a);  if (dg !== 0) return dg;
+    return mgrGF(b) - mgrGF(a);
+  });
 }
 function computeRanks() {
   const r = {};
@@ -1541,6 +1559,7 @@ function renderLeaderboard() {
       <td><div class="team-chips">${m.teams.map(t=>`<span class="chip clickable ${state.teams[t]?.alive?'alive':'eliminated'}" onclick="openTeamModal('${t.replace(/'/g,"\\'")}')">${flagHTML(t)} ${t}</span>`).join('')}</div></td>
       <td class="r pts-cell">${pts}</td>
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
+      <td class="r gf-cell">${mgrGF(m)}</td>
       <td class="r mp-cell">${mp}</td>`;
     tbody.appendChild(tr);
 
