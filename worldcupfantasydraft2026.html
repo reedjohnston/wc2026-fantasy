@@ -1301,7 +1301,7 @@ function openTeamModal(team) {
 
   let html = `<div class="modal-head">
       <div class="modal-eyebrow">Group ${letter || '—'}${alive?'':' · Eliminated'}</div>
-      <div class="modal-title">${flagHTML(team)} ${team}</div>
+      <div class="modal-title">${flagHTML(team)} ${team}${fifaRank(team)?`<span style="font-size:14px;font-weight:500;color:var(--text-muted);background:var(--surface2);padding:2px 8px;border-radius:6px;letter-spacing:0;text-transform:none;font-family:'DM Mono',monospace">FIFA #${fifaRank(team)}</span>`:''}</div>
       <div class="modal-statline">
         <div class="modal-stat"><span class="modal-stat-val">${pts}</span><span class="modal-stat-lbl">Points</span></div>
         <div class="modal-stat"><span class="modal-stat-val plain">${gd>0?'+':''}${isNaN(gd)?0:gd}</span><span class="modal-stat-lbl">Goal Diff</span></div>
