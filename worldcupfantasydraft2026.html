@@ -112,6 +112,7 @@
   .manager-teams-mobile{display:none;}
   .mp-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
   .gf-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
+  .max-cell{font-size:14px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0;}
   .pts-cell{font-weight:700;font-size:23px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:0;text-shadow:0 0 12px var(--gold-glow);}
   .gd-cell{font-size:17px;font-family:'DM Mono',monospace;letter-spacing:0;}
   .team-chips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -694,6 +695,7 @@
           <th class="r" style="width:70px">Pts</th>
           <th class="r" style="width:60px">GD</th>
           <th class="r" style="width:50px">GF</th>
+          <th class="r" style="width:54px">Max</th>
           <th class="r" style="width:44px">MP</th>
         </tr></thead>
         <tbody id="lb-body"></tbody>
@@ -1369,6 +1371,22 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal()
 
 // ── LEADERBOARD ───────────────────────────────────────────────────────────────
 function mgrGF(m) { return m.teams.reduce((s,t) => s + groupGF(t), 0); }
+
+function teamMaxPossible(t) {
+  const d = state.teams[t];
+  if (!d || d.alive === false) return 0; // eliminated
+  // Group stage: up to 9 pts (3 wins), minus what's already earned
+  const groupEarned = (d.w||0)*3 + (d.d||0);
+  const gamesPlayed = (d.w||0) + (d.d||0) + (d.l||0);
+  const groupRemaining = Math.max(0, 9 - groupEarned); // optimistic: win remaining group games
+  // KO rounds: earn pts for every round they haven't already won
+  const koEarned = KO_ROUNDS.filter(r => d.ko && d.ko[r.key]).reduce((s,r) => s + r.pts, 0);
+  const koTotal = KO_ROUNDS.reduce((s,r) => s + r.pts, 0); // 4+5+6+7+10 = 32
+  const koRemaining = koTotal - koEarned;
+  return groupRemaining + koRemaining;
+}
+function mgrMaxPossible(m) { return m.teams.reduce((s,t) => s + teamMaxPossible(t), 0); }
+function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || state.teams[t].alive === false); }
 function lbSorted() {
   return [...MANAGERS].sort((a,b)=>{
     const dp = mgrPts(b) - mgrPts(a); if (dp !== 0) return dp;
@@ -1560,6 +1578,7 @@ function renderLeaderboard() {
       <td class="r pts-cell">${pts}</td>
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
+      <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : '+'+mgrMaxPossible(m)}</td>
       <td class="r mp-cell">${mp}</td>`;
     tbody.appendChild(tr);
 
