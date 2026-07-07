@@ -1374,25 +1374,58 @@ function mgrGF(m) { return m.teams.reduce((s,t) => s + groupGF(t), 0); }
 
 function teamMaxPossible(t) {
   const d = state.teams[t];
-  if (!d || d.alive === false) return 0; // eliminated — anchor shown at manager level
-
-  // Group stage: only add remaining group points if still in group stage
+  if (!d || d.alive === false) return 0;
   const gamesPlayed = (d.w||0) + (d.d||0) + (d.l||0);
   const groupEarned = (d.w||0)*3 + (d.d||0);
-  const inGroupStage = gamesPlayed < 3; // group stage = 3 matches
+  const inGroupStage = gamesPlayed < 3;
   const groupRemaining = inGroupStage ? Math.max(0, 9 - groupEarned) : 0;
-
-  // KO rounds: only count rounds this team hasn't played yet
-  // A team earns pts for a round when they WIN it (ko[r.key] = true)
-  // Remaining = sum of pts for all rounds they haven't won yet
   const highestRoundWon = KO_ROUNDS.reduce((highest, r, i) => {
     return (d.ko && d.ko[r.key]) ? i : highest;
   }, -1);
-  // Next round is highestRoundWon + 1 (or 0 if still in group stage)
   const nextRoundIdx = highestRoundWon + 1;
   const koRemaining = KO_ROUNDS.slice(nextRoundIdx).reduce((s, r) => s + r.pts, 0);
-
   return groupRemaining + koRemaining;
+}
+
+// Bracket-aware max for a manager: two teams in the same bracket path can't
+// both win the same round, so we cap their combined contribution per round.
+function mgrMaxPossible(m) {
+  // Step 1: naive sum of each team's individual max (ignores bracket collisions)
+  const naive = m.teams.reduce((s, t) => s + teamMaxPossible(t), 0);
+
+  // Step 2: identify bracket collisions — pairs of alive teams on the same
+  // bracket path that will meet each other, costing pts for the loser.
+  // We use _bt to find each future round's matchups and check for same-manager teams.
+  let deductions = 0;
+  const myAlive = new Set(m.teams.filter(t => state.teams[t] && state.teams[t].alive !== false));
+  if (myAlive.size < 2) return naive; // no collision possible
+
+  // For each future KO round match, if BOTH teams in the match belong to this
+  // manager, the loser's pts for that round and all subsequent rounds are
+  // double-counted in the naive sum — deduct the lesser contribution.
+  const allMatchIds = [
+    ...R32_MATCHES.map(r => r.id),
+    ...R16_PAIRINGS.map((_, i) => 'r16_'+i),
+    'qf_0','qf_1','qf_2','qf_3',
+    'sf_0','sf_1','f_0',
+  ];
+
+  allMatchIds.forEach(id => {
+    const bt = _bt[id]; if (!bt || !bt.tA || !bt.tB) return;
+    if (!myAlive.has(bt.tA) || !myAlive.has(bt.tB)) return;
+    // Both teams are this manager's alive teams — one will be eliminated here.
+    // The loser loses all pts from this round onward.
+    const roundKey = id.replace(/_\d+$/, '');
+    const roundIdx = KO_ROUNDS.findIndex(r => r.key === roundKey);
+    if (roundIdx < 0) return;
+    // Deduct the minimum of the two teams' remaining pts from this round on
+    // (the worse-off team will be the one eliminated, costing fewer pts)
+    const ptsA = KO_ROUNDS.slice(roundIdx).reduce((s, r) => s + r.pts, 0);
+    const ptsB = ptsA; // same rounds remaining for both
+    deductions += Math.min(ptsA, ptsB); // both equal so just deduct once
+  });
+
+  return naive - deductions;
 }
 function mgrMaxPossible(m) { return m.teams.reduce((s,t) => s + teamMaxPossible(t), 0); }
 function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || state.teams[t].alive === false); }
