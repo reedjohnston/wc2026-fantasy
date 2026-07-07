@@ -872,13 +872,13 @@ const KO_SCHEDULE = {
   // Round of 16
   // Round of 16 — confirmed from FOX Sports (all times ET = UTC-4)
   'r16_0':  { date:'2026-07-04', time:'13:00 UTC-4', venue:'Houston, TX' },          // Canada vs Morocco — 1pm ET
-  'r16_1':  { date:'2026-07-04', time:'16:00 UTC-4', venue:'East Rutherford, NJ' },  // Paraguay vs France — 4pm ET
+  'r16_1':  { date:'2026-07-04', time:'16:00 UTC-4', venue:'Philadelphia, PA' },      // Paraguay vs France — 4pm ET
   'r16_2':  { date:'2026-07-05', time:'16:00 UTC-4', venue:'East Rutherford, NJ' },  // Brazil vs Norway — 4pm ET
   'r16_3':  { date:'2026-07-05', time:'20:00 UTC-4', venue:'Mexico City, Mexico' },  // Mexico vs England — 8pm ET
   'r16_4':  { date:'2026-07-06', time:'15:00 UTC-4', venue:'Arlington, TX' },        // Portugal vs Spain — 3pm ET
   'r16_5':  { date:'2026-07-06', time:'20:00 UTC-4', venue:'Seattle, WA' },          // USA vs Belgium — 8pm ET
-  'r16_6':  { date:'2026-07-07', time:'16:00 UTC-4', venue:'Vancouver, Canada' },    // Argentina vs Colombia — TBD
-  'r16_7':  { date:'2026-07-07', time:'12:00 UTC-4', venue:'Atlanta, GA' },          // Switzerland vs Australia — TBD
+  'r16_6':  { date:'2026-07-07', time:'17:00 UTC-4', venue:'Atlanta, GA' },          // Argentina vs Egypt — 5pm ET
+  'r16_7':  { date:'2026-07-07', time:'21:00 UTC-4', venue:'Vancouver, Canada' },    // Switzerland vs Colombia — 9pm ET
   // Quarterfinals (Jul 9–11)
   'qf_0':   { date:'2026-07-09', time:'16:00 UTC-4', venue:'Foxborough, MA' },
   'qf_1':   { date:'2026-07-10', time:'15:00 UTC-4', venue:'Inglewood, CA' },
@@ -893,13 +893,13 @@ const KO_SCHEDULE = {
 
 const R16_PAIRINGS = [
   [0, 2],   // r16_0: Canada vs Morocco         — Jul 4 1pm ET Houston
-  [1, 4],   // r16_1: Paraguay vs France         — Jul 4 4pm ET East Rutherford
+  [1, 4],   // r16_1: Paraguay vs France         — Jul 4 4pm ET Philadelphia
   [3, 5],   // r16_2: Brazil vs Norway           — Jul 5 4pm ET East Rutherford
   [6, 7],   // r16_3: Mexico vs England          — Jul 5 8pm ET Mexico City
   [11, 14], // r16_4: Portugal vs Spain          — Jul 6 3pm ET Arlington
   [8, 9],   // r16_5: USA vs Belgium             — Jul 6 8pm ET Seattle
-  [13, 15], // r16_6: Argentina vs Colombia      — Jul 7
-  [12, 10], // r16_7: Switzerland vs Australia   — Jul 7
+  [13, 10], // r16_6: Argentina vs Egypt         — Jul 7 5pm ET Atlanta
+  [12, 15], // r16_7: Switzerland vs Colombia    — Jul 7 9pm ET Vancouver
 ];
 
 const KO_ROUNDS = [
@@ -1374,15 +1374,24 @@ function mgrGF(m) { return m.teams.reduce((s,t) => s + groupGF(t), 0); }
 
 function teamMaxPossible(t) {
   const d = state.teams[t];
-  if (!d || d.alive === false) return 0; // eliminated
-  // Group stage: up to 9 pts (3 wins), minus what's already earned
-  const groupEarned = (d.w||0)*3 + (d.d||0);
+  if (!d || d.alive === false) return 0; // eliminated — anchor shown at manager level
+
+  // Group stage: only add remaining group points if still in group stage
   const gamesPlayed = (d.w||0) + (d.d||0) + (d.l||0);
-  const groupRemaining = Math.max(0, 9 - groupEarned); // optimistic: win remaining group games
-  // KO rounds: earn pts for every round they haven't already won
-  const koEarned = KO_ROUNDS.filter(r => d.ko && d.ko[r.key]).reduce((s,r) => s + r.pts, 0);
-  const koTotal = KO_ROUNDS.reduce((s,r) => s + r.pts, 0); // 4+5+6+7+10 = 32
-  const koRemaining = koTotal - koEarned;
+  const groupEarned = (d.w||0)*3 + (d.d||0);
+  const inGroupStage = gamesPlayed < 3; // group stage = 3 matches
+  const groupRemaining = inGroupStage ? Math.max(0, 9 - groupEarned) : 0;
+
+  // KO rounds: only count rounds this team hasn't played yet
+  // A team earns pts for a round when they WIN it (ko[r.key] = true)
+  // Remaining = sum of pts for all rounds they haven't won yet
+  const highestRoundWon = KO_ROUNDS.reduce((highest, r, i) => {
+    return (d.ko && d.ko[r.key]) ? i : highest;
+  }, -1);
+  // Next round is highestRoundWon + 1 (or 0 if still in group stage)
+  const nextRoundIdx = highestRoundWon + 1;
+  const koRemaining = KO_ROUNDS.slice(nextRoundIdx).reduce((s, r) => s + r.pts, 0);
+
   return groupRemaining + koRemaining;
 }
 function mgrMaxPossible(m) { return m.teams.reduce((s,t) => s + teamMaxPossible(t), 0); }
