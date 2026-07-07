@@ -695,7 +695,7 @@
           <th class="r" style="width:70px">Pts</th>
           <th class="r" style="width:60px">GD</th>
           <th class="r" style="width:50px">GF</th>
-          <th class="r" style="width:54px">Max</th>
+          <th class="r" style="width:54px" title="Current points + max possible remaining">Max</th>
           <th class="r" style="width:44px">MP</th>
         </tr></thead>
         <tbody id="lb-body"></tbody>
@@ -1710,7 +1710,7 @@ function renderLeaderboard() {
       <td class="r pts-cell">${pts}</td>
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
-      <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : '+'+mgrMaxPossible(m)}</td>
+      <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : pts + mgrMaxPossible(m)}</td>
       <td class="r mp-cell">${mp}</td>`;
     tbody.appendChild(tr);
 
