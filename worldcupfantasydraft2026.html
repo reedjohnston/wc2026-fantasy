@@ -1388,33 +1388,133 @@ function teamMaxPossible(t) {
 }
 function mgrMaxPossible(m) {
   const myAlive = new Set(m.teams.filter(t => state.teams[t] && state.teams[t].alive !== false));
-
-  // Naive sum: each alive team can win everything from their next round onward
   const naive = m.teams.reduce((s, t) => s + teamMaxPossible(t), 0);
-
   if (myAlive.size < 2) return naive;
 
-  // Bracket collision deduction: when two of this manager's alive teams appear
-  // in the same future match, only one can advance — deduct the loser's pts
-  // from that round onward (both have equal pts remaining at that point, so
-  // deduct one full set: pts for that round + all subsequent rounds).
+  // For each KO match, find which of this manager's teams are the two potential
+  // contestants — even if the bracket slot isn't resolved yet (one side may be
+  // null because an earlier match hasn't been played).  We do this by tracing
+  // which of the manager's alive teams can REACH each future match via the
+  // bracket tree, then deducting when two of them share the same match.
   let deductions = 0;
-  const allMatchIds = [
-    ...R32_MATCHES.map(r => r.id),
-    ...R16_PAIRINGS.map((_, i) => 'r16_'+i),
-    'qf_0','qf_1','qf_2','qf_3',
-    'sf_0','sf_1','f_0',
-  ];
 
-  allMatchIds.forEach(id => {
-    const bt = _bt[id]; if (!bt || !bt.tA || !bt.tB) return;
-    if (!myAlive.has(bt.tA) || !myAlive.has(bt.tB)) return;
-    const roundKey = id.replace(/_\d+$/, '');
-    const roundIdx = KO_ROUNDS.findIndex(r => r.key === roundKey);
-    if (roundIdx < 0) return;
-    // One team gets eliminated here — deduct pts from this round onward for the loser
-    deductions += KO_ROUNDS.slice(roundIdx).reduce((s, r) => s + r.pts, 0);
+  // Build a map: matchId → Set of manager's alive teams that could reach that match
+  function teamsInSlot(slot) {
+    // slot is a resolved team name OR null
+    if (!slot) return new Set();
+    if (myAlive.has(slot)) return new Set([slot]);
+    return new Set();
+  }
+
+  function teamsFromR32(idx) {
+    const m32 = R32_MATCHES[idx];
+    if (!m32) return new Set();
+    const ms = state.koScores[m32.id] || {};
+    const bt = _bt[m32.id] || {};
+    if (ms.winner) {
+      const w = ms.winner === 'A' ? bt.tA : bt.tB;
+      return myAlive.has(w) ? new Set([w]) : new Set();
+    }
+    const s = new Set();
+    if (myAlive.has(bt.tA)) s.add(bt.tA);
+    if (myAlive.has(bt.tB)) s.add(bt.tB);
+    return s;
+  }
+
+  // r16 candidates: union of each r32 pair's reachable teams
+  const r16Teams = R16_PAIRINGS.map((pair, i) => {
+    const id = 'r16_' + i;
+    const ms = state.koScores[id] || {};
+    const bt = _bt[id] || {};
+    if (ms.winner) {
+      const w = ms.winner === 'A' ? bt.tA : bt.tB;
+      return myAlive.has(w) ? new Set([w]) : new Set();
+    }
+    const s = new Set();
+    const a = teamsFromR32(pair[0]), b = teamsFromR32(pair[1]);
+    a.forEach(t => s.add(t)); b.forEach(t => s.add(t));
+    return s;
   });
+
+  // Check each r16 match for collision
+  R16_PAIRINGS.forEach((pair, i) => {
+    const a = teamsFromR32(pair[0]), b = teamsFromR32(pair[1]);
+    a.forEach(ta => b.forEach(tb => {
+      if (myAlive.has(ta) && myAlive.has(tb) && ta !== tb) {
+        // Collision in R16 — deduct r16+qf+sf+f for the loser
+        const idx = KO_ROUNDS.findIndex(r => r.key === 'r16');
+        deductions += KO_ROUNDS.slice(idx).reduce((s, r) => s + r.pts, 0);
+      }
+    }));
+  });
+
+  // qf candidates: pairs of r16 winners
+  const qfPairs = [[0,1],[2,3],[4,5],[6,7]];
+  qfPairs.forEach((pair, i) => {
+    const id = 'qf_' + i;
+    const ms = state.koScores[id] || {};
+    const bt = _bt[id] || {};
+    if (ms.winner) return; // already resolved, no future collision
+    const a = r16Teams[pair[0]], b = r16Teams[pair[1]];
+    a.forEach(ta => b.forEach(tb => {
+      if (myAlive.has(ta) && myAlive.has(tb) && ta !== tb) {
+        const idx = KO_ROUNDS.findIndex(r => r.key === 'qf');
+        deductions += KO_ROUNDS.slice(idx).reduce((s, r) => s + r.pts, 0);
+      }
+    }));
+  });
+
+  // sf candidates: pairs of qf winners
+  const qfTeams = qfPairs.map((pair, i) => {
+    const id = 'qf_' + i;
+    const ms = state.koScores[id] || {};
+    const bt = _bt[id] || {};
+    if (ms.winner) {
+      const w = ms.winner === 'A' ? bt.tA : bt.tB;
+      return myAlive.has(w) ? new Set([w]) : new Set();
+    }
+    const s = new Set();
+    r16Teams[pair[0]].forEach(t => s.add(t));
+    r16Teams[pair[1]].forEach(t => s.add(t));
+    return s;
+  });
+  [[0,1],[2,3]].forEach((pair, i) => {
+    const id = 'sf_' + i;
+    const ms = state.koScores[id] || {};
+    if (ms.winner) return;
+    const a = qfTeams[pair[0]], b = qfTeams[pair[1]];
+    a.forEach(ta => b.forEach(tb => {
+      if (myAlive.has(ta) && myAlive.has(tb) && ta !== tb) {
+        const idx = KO_ROUNDS.findIndex(r => r.key === 'sf');
+        deductions += KO_ROUNDS.slice(idx).reduce((s, r) => s + r.pts, 0);
+      }
+    }));
+  });
+
+  // Final collision
+  const sfTeams = [[0,1],[2,3]].map((pair, i) => {
+    const id = 'sf_' + i;
+    const ms = state.koScores[id] || {};
+    const bt = _bt[id] || {};
+    if (ms.winner) {
+      const w = ms.winner === 'A' ? bt.tA : bt.tB;
+      return myAlive.has(w) ? new Set([w]) : new Set();
+    }
+    const s = new Set();
+    qfTeams[pair[0]].forEach(t => s.add(t));
+    qfTeams[pair[1]].forEach(t => s.add(t));
+    return s;
+  });
+  const ms_f = state.koScores['f_0'] || {};
+  if (!ms_f.winner) {
+    const a = sfTeams[0], b = sfTeams[1];
+    a.forEach(ta => b.forEach(tb => {
+      if (myAlive.has(ta) && myAlive.has(tb) && ta !== tb) {
+        const idx = KO_ROUNDS.findIndex(r => r.key === 'f');
+        deductions += KO_ROUNDS.slice(idx).reduce((s, r) => s + r.pts, 0);
+      }
+    }));
+  }
 
   return naive - deductions;
 }
