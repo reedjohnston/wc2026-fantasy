@@ -1037,9 +1037,15 @@ function computeBracket() {
     return ms.winner === 'A' ? tA : ms.winner === 'B' ? tB : null;
   });
 
-  const qfW = [0,1,2,3].map(i => {
+  // QF bracket (explicit pairings to match real bracket):
+  // QF0: France(r16_1) vs Morocco(r16_0)
+  // QF1: Spain(r16_4) vs Belgium(r16_5)
+  // QF2: Norway(r16_2) vs England(r16_3)
+  // QF3: Argentina(r16_6) vs Switzerland(r16_7)
+  const QF_PAIRINGS = [[1,0],[4,5],[2,3],[6,7]];
+  const qfW = QF_PAIRINGS.map((pair, i) => {
     const id = 'qf_'+i;
-    const tA = r16W[i*2], tB = r16W[i*2+1];
+    const tA = r16W[pair[0]], tB = r16W[pair[1]];
     _bt[id] = { tA, tB };
     const ms = state.koScores[id] || {};
     return ms.winner === 'A' ? tA : ms.winner === 'B' ? tB : null;
@@ -1452,8 +1458,9 @@ function mgrMaxPossible(m) {
     }));
   });
 
-  // qf candidates: pairs of r16 winners
-  const qfPairs = [[0,1],[2,3],[4,5],[6,7]];
+  // qf candidates: explicit pairings matching real bracket
+  // QF0: r16_1 vs r16_0, QF1: r16_4 vs r16_5, QF2: r16_2 vs r16_3, QF3: r16_6 vs r16_7
+  const qfPairs = [[1,0],[4,5],[2,3],[6,7]];
   qfPairs.forEach((pair, i) => {
     const id = 'qf_' + i;
     const ms = state.koScores[id] || {};
