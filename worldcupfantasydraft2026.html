@@ -113,6 +113,8 @@
   .mp-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
   .gf-cell{font-size:17px;color:var(--text-muted);font-family:'DM Mono',monospace;letter-spacing:0;}
   .max-cell{font-size:14px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0;}
+  .sim-best{font-size:13px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0;}
+  .sim-worst{font-size:13px;color:#c53030;font-family:'DM Mono',monospace;letter-spacing:0;}
   .pts-cell{font-weight:700;font-size:23px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:0;text-shadow:0 0 12px var(--gold-glow);}
   .gd-cell{font-size:17px;font-family:'DM Mono',monospace;letter-spacing:0;}
   .team-chips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -696,6 +698,8 @@
           <th class="r" style="width:60px">GD</th>
           <th class="r" style="width:50px">GF</th>
           <th class="r" style="width:54px" title="Current points + max possible remaining">Max</th>
+          <th class="r" style="width:46px" title="Best possible finishing rank">🏆</th>
+          <th class="r" style="width:46px" title="Worst possible finishing rank">📉</th>
           <th class="r" style="width:44px">MP</th>
         </tr></thead>
         <tbody id="lb-body"></tbody>
@@ -1519,6 +1523,177 @@ function mgrMaxPossible(m) {
   return naive - deductions;
 }
 function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || state.teams[t].alive === false); }
+
+// ── BRACKET SIMULATION ────────────────────────────────────────────────────────
+// Enumerate all possible outcomes for remaining KO matches to find each
+// manager's guaranteed floor (worst-case rank) and ceiling (best-case rank).
+function simulateBracket() {
+  // Collect all remaining undecided KO matches in bracket order
+  const allIds = [
+    ...R32_MATCHES.map(m => m.id),
+    ...R16_PAIRINGS.map((_,i) => 'r16_'+i),
+    'qf_0','qf_1','qf_2','qf_3',
+    'sf_0','sf_1','f_0',
+  ];
+
+  // A "state snapshot" is: for each match, who won (tA or tB)?
+  // We only simulate undecided matches where both teams are known.
+  const pending = allIds.filter(id => {
+    const ms = state.koScores[id] || {};
+    if (ms.winner) return false; // already decided
+    const bt = _bt[id] || {};
+    return bt.tA && bt.tB; // both teams known = can simulate
+  });
+
+  // Build per-manager KO pts from already-decided matches
+  function baseKoPts() {
+    const pts = {};
+    MANAGERS.forEach(m => { pts[m.name] = 0; });
+    allIds.forEach(id => {
+      const ms = state.koScores[id] || {};
+      if (!ms.winner) return;
+      const bt = _bt[id] || {};
+      const winner = ms.winner === 'A' ? bt.tA : bt.tB;
+      const roundKey = id.replace(/_\d+$/, '');
+      const round = KO_ROUNDS.find(r => r.key === roundKey);
+      if (!round || !winner) return;
+      MANAGERS.forEach(m => {
+        if (m.teams.includes(winner)) pts[m.name] += round.pts;
+      });
+    });
+    return pts;
+  }
+
+  const base = baseKoPts();
+  const groupPtsMap = {};
+  MANAGERS.forEach(m => { groupPtsMap[m.name] = m.teams.reduce((s,t) => s + groupPts(t), 0); });
+
+  // Track best/worst total pts and rank for each manager across all simulations
+  const bestPts  = {}, worstPts  = {};
+  const bestRank = {}, worstRank = {};
+  MANAGERS.forEach(m => {
+    const cur = groupPtsMap[m.name] + base[m.name];
+    bestPts[m.name]  = cur;
+    worstPts[m.name] = cur;
+    bestRank[m.name]  = MANAGERS.length;
+    worstRank[m.name] = 1;
+  });
+
+  // Simulate: try all 2^N outcome combinations for N pending matches
+  // Cap at 2^16 = 65536 combinations to keep it snappy
+  const n = Math.min(pending.length, 16);
+  const total = 1 << n;
+
+  // For each simulation, we need to know which team wins each pending match
+  // AND propagate those wins into later bracket slots (i.e. update _bt for
+  // later rounds). We do a lightweight bracket propagation per simulation.
+  for (let mask = 0; mask < total; mask++) {
+    // Build a local winner map for this simulation
+    const simWinner = {}; // matchId → winning team name
+    const simBt = {}; // matchId → {tA, tB} including propagated teams
+    Object.assign(simBt, _bt); // start from real bracket
+
+    // Process matches in order so propagation works
+    for (let i = 0; i < n; i++) {
+      const id = pending[i];
+      const bt = simBt[id] || _bt[id] || {};
+      const tA = bt.tA, tB = bt.tB;
+      if (!tA || !tB) continue;
+      simWinner[id] = (mask >> i) & 1 ? tB : tA;
+      // Propagate winner into later bracket slots
+      propagateWinner(id, simWinner[id], simBt);
+    }
+
+    // Compute total pts for each manager under this simulation
+    const simPts = {};
+    MANAGERS.forEach(m => {
+      simPts[m.name] = groupPtsMap[m.name] + base[m.name];
+    });
+    // Add pts from simulated outcomes
+    for (let i = 0; i < n; i++) {
+      const id = pending[i];
+      const winner = simWinner[id];
+      if (!winner) continue;
+      const roundKey = id.replace(/_\d+$/, '');
+      const round = KO_ROUNDS.find(r => r.key === roundKey);
+      if (!round) continue;
+      MANAGERS.forEach(m => {
+        if (m.teams.includes(winner)) simPts[m.name] += round.pts;
+      });
+    }
+
+    // Rank managers in this simulation
+    const ranked = [...MANAGERS].sort((a, b) => {
+      const dp = simPts[b.name] - simPts[a.name];
+      if (dp !== 0) return dp;
+      // Use current GD/GF as tiebreaker (simplified - full sim would need GD tracking)
+      const dg = mgrGD(b) - mgrGD(a);
+      if (dg !== 0) return dg;
+      return mgrGF(b) - mgrGF(a);
+    });
+
+    MANAGERS.forEach(m => {
+      const pts = simPts[m.name];
+      const rank = ranked.findIndex(r => r.name === m.name) + 1;
+      if (pts > bestPts[m.name])   bestPts[m.name]  = pts;
+      if (pts < worstPts[m.name])  worstPts[m.name] = pts;
+      if (rank < bestRank[m.name]) bestRank[m.name] = rank;
+      if (rank > worstRank[m.name]) worstRank[m.name] = rank;
+    });
+  }
+
+  return { bestRank, worstRank, bestPts, worstPts };
+}
+
+function propagateWinner(matchId, winner, simBt) {
+  // Figure out which later bracket slot this match's winner feeds into
+  // R32 → R16
+  const r32idx = R32_MATCHES.findIndex(m => m.id === matchId);
+  if (r32idx >= 0) {
+    R16_PAIRINGS.forEach((pair, i) => {
+      const slot = pair.indexOf(r32idx);
+      if (slot < 0) return;
+      const r16id = 'r16_' + i;
+      simBt[r16id] = simBt[r16id] ? {...simBt[r16id]} : {};
+      if (slot === 0) simBt[r16id].tA = winner;
+      else            simBt[r16id].tB = winner;
+    });
+  }
+  // R16 → QF
+  const r16idx = parseInt(matchId.replace('r16_',''));
+  if (!isNaN(r16idx) && matchId.startsWith('r16_')) {
+    const qfPairs = [[0,1],[2,3],[4,5],[6,7]];
+    qfPairs.forEach((pair, qi) => {
+      const slot = pair.indexOf(r16idx);
+      if (slot < 0) return;
+      const qfid = 'qf_' + qi;
+      simBt[qfid] = simBt[qfid] ? {...simBt[qfid]} : {};
+      if (slot === 0) simBt[qfid].tA = winner;
+      else            simBt[qfid].tB = winner;
+    });
+  }
+  // QF → SF
+  const qfIdx = parseInt(matchId.replace('qf_',''));
+  if (!isNaN(qfIdx) && matchId.startsWith('qf_')) {
+    const sfPairs = [[0,1],[2,3]];
+    sfPairs.forEach((pair, si) => {
+      const slot = pair.indexOf(qfIdx);
+      if (slot < 0) return;
+      const sfid = 'sf_' + si;
+      simBt[sfid] = simBt[sfid] ? {...simBt[sfid]} : {};
+      if (slot === 0) simBt[sfid].tA = winner;
+      else            simBt[sfid].tB = winner;
+    });
+  }
+  // SF → Final
+  const sfIdx = parseInt(matchId.replace('sf_',''));
+  if (!isNaN(sfIdx) && matchId.startsWith('sf_')) {
+    simBt['f_0'] = simBt['f_0'] ? {...simBt['f_0']} : {};
+    if (sfIdx === 0) simBt['f_0'].tA = winner;
+    else             simBt['f_0'].tB = winner;
+  }
+}
+
 function lbSorted() {
   return [...MANAGERS].sort((a,b)=>{
     const dp = mgrPts(b) - mgrPts(a); if (dp !== 0) return dp;
@@ -1693,6 +1868,8 @@ function renderNextUp() {
 
 function renderLeaderboard() {
   const sorted=lbSorted();
+  // Cache simulation — only recompute once per render
+  const sim = simulateBracket();
 
   const tbody=document.getElementById('lb-body'); tbody.innerHTML='';
   sorted.forEach((m,i)=>{
@@ -1711,6 +1888,8 @@ function renderLeaderboard() {
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
       <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : pts + mgrMaxPossible(m)}</td>
+      <td class="r sim-best" title="Best possible finish">${sim.bestRank[m.name] === sim.worstRank[m.name] ? '—' : '#'+sim.bestRank[m.name]}</td>
+      <td class="r sim-worst" title="Worst possible finish">${sim.bestRank[m.name] === sim.worstRank[m.name] ? '#'+sim.worstRank[m.name] : '#'+sim.worstRank[m.name]}</td>
       <td class="r mp-cell">${mp}</td>`;
     tbody.appendChild(tr);
 
