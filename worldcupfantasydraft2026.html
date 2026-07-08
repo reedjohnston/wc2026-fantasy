@@ -1542,25 +1542,18 @@ function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || 
 // With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
 // outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // QF bracket is fully known — hardcode teams for reliability
-  // QF0: Morocco(Reed) vs France(Brandon)
-  // QF1: Spain(Danny) vs Belgium(Ray)
-  // QF2: Norway(Brian) vs England(Robbie)
-  // QF3: Argentina(Dan) vs Switzerland(Dan) — Dan guaranteed +6
+  // QF bracket — hardcoded so simulation works even before _bt is populated by sync
   const QF = [
-    { id:'qf_0', teams:['Morocco','France'] },
-    { id:'qf_1', teams:['Spain','Belgium'] },
-    { id:'qf_2', teams:['Norway','England'] },
-    { id:'qf_3', teams:['Argentina','Switzerland'] },
+    { id:'qf_0', teams:['Morocco','France'] },       // Reed vs Brandon
+    { id:'qf_1', teams:['Spain','Belgium'] },         // Danny vs Ray
+    { id:'qf_2', teams:['Norway','England'] },        // Brian vs Robbie
+    { id:'qf_3', teams:['Argentina','Switzerland'] }, // Dan vs Dan (guaranteed +6)
   ];
-  // SF: SF0 = QF0w vs QF1w, SF1 = QF2w vs QF3w
-  // Final: SF0w vs SF1w
 
-  // Owner lookup: which manager owns each team
   const teamOwner = {};
   MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
 
-  // Base pts: mgrPts() minus any QF/SF/Final already in state (clean slate for sim)
+  // Base pts: subtract any QF/SF/Final that may already be in state
   const basePts = {};
   MANAGERS.forEach(m => {
     let p = mgrPts(m);
@@ -1573,13 +1566,12 @@ function simulateBracket() {
     basePts[m.name] = p;
   });
 
-  const bestRank  = {}, worstRank = {};
+  const bestRank = {}, worstRank = {};
   MANAGERS.forEach(m => { bestRank[m.name] = MANAGERS.length; worstRank[m.name] = 1; });
 
-  // Enumerate all 16 QF outcomes
+  // 16 QF × 4 SF × 2 Final = 128 combinations
   for (let qMask = 0; qMask < 16; qMask++) {
     const qfWinners = QF.map((q, i) => {
-      // Check if this QF already has a result
       const ms = state.koScores[q.id] || {};
       if (ms.winner) {
         const bt = _bt[q.id] || {};
@@ -1588,11 +1580,10 @@ function simulateBracket() {
       return (qMask >> i) & 1 ? q.teams[1] : q.teams[0];
     });
 
-    // SF: winner of SF0 = one of [qfW0, qfW1], winner of SF1 = one of [qfW2, qfW3]
     for (let sMask = 0; sMask < 4; sMask++) {
-      // Check if SFs already decided
       const sf0ms = state.koScores['sf_0'] || {};
       const sf1ms = state.koScores['sf_1'] || {};
+
       let sf0W, sf1W;
       if (sf0ms.winner) {
         const bt = _bt['sf_0'] || {};
@@ -1617,14 +1608,13 @@ function simulateBracket() {
           fW = fMask ? sf1W : sf0W;
         }
 
-        // Compute pts for this scenario
         const simPts = {...basePts};
+        // Each QF winner gets +6 exactly once (qfWinners has one team per match)
         qfWinners.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] = (simPts[o]||0) + 6; });
         [sf0W, sf1W].forEach(t => { const o = teamOwner[t]; if (o) simPts[o] = (simPts[o]||0) + 7; });
         if (fW) { const o = teamOwner[fW]; if (o) simPts[o] = (simPts[o]||0) + 10; }
 
-        // Rank
-        const ranked = [...MANAGERS].sort((a,b) => {
+        const ranked = [...MANAGERS].sort((a, b) => {
           const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
           const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
           return mgrGF(b) - mgrGF(a);
@@ -1639,7 +1629,6 @@ function simulateBracket() {
   }
   return { bestRank, worstRank };
 }
-
 function debugSim() {
   const sim = simulateBracket();
   const base = {};
