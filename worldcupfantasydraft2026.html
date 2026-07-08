@@ -1542,18 +1542,13 @@ function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || 
 // With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
 // outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // QF bracket — hardcoded so simulation works even before _bt is populated by sync
-  const QF = [
-    { id:'qf_0', teams:['Morocco','France'] },       // Reed vs Brandon
-    { id:'qf_1', teams:['Spain','Belgium'] },         // Danny vs Ray
-    { id:'qf_2', teams:['Norway','England'] },        // Brian vs Robbie
-    { id:'qf_3', teams:['Argentina','Switzerland'] }, // Dan vs Dan (guaranteed +6)
-  ];
+  // Hardcoded QF bracket — teams confirmed from live results
+  // QF0: Morocco(Reed) vs France(Brandon)    SF0 left
+  // QF1: Spain(Danny) vs Belgium(Ray)        SF0 right  ← Danny/Ray play EACH OTHER
+  // QF2: Norway(Brian) vs England(Robbie)    SF1 left
+  // QF3: Argentina(Dan) vs Switzerland(Dan)  SF1 right  ← Dan gets +6 GUARANTEED
 
-  const teamOwner = {};
-  MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
-
-  // Base pts: subtract any QF/SF/Final that may already be in state
+  // Base pts stripped of QF/SF/Final — we re-add those in simulation
   const basePts = {};
   MANAGERS.forEach(m => {
     let p = mgrPts(m);
@@ -1566,54 +1561,45 @@ function simulateBracket() {
     basePts[m.name] = p;
   });
 
+  const teamOwner = {};
+  MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
+
+  // Manager names for each QF slot
+  const QF_SLOTS = [
+    ['Morocco','France'],       // QF0: Reed vs Brandon
+    ['Spain','Belgium'],        // QF1: Danny vs Ray — ONE must win, ONE must lose
+    ['Norway','England'],       // QF2: Brian vs Robbie
+    ['Argentina','Switzerland'],// QF3: Dan vs Dan — Dan gets +6 no matter what
+  ];
+
   const bestRank = {}, worstRank = {};
   MANAGERS.forEach(m => { bestRank[m.name] = MANAGERS.length; worstRank[m.name] = 1; });
 
-  // 16 QF × 4 SF × 2 Final = 128 combinations
+  // Enumerate 16 QF × 4 SF × 2 Final = 128 scenarios
   for (let qMask = 0; qMask < 16; qMask++) {
-    const qfWinners = QF.map((q, i) => {
-      const ms = state.koScores[q.id] || {};
-      if (ms.winner) {
-        const bt = _bt[q.id] || {};
-        return ms.winner === 'A' ? (bt.tA || q.teams[0]) : (bt.tB || q.teams[1]);
-      }
-      return (qMask >> i) & 1 ? q.teams[1] : q.teams[0];
-    });
+    // One winner per QF — bit 0=QF0, bit 1=QF1, bit 2=QF2, bit 3=QF3
+    const qfW = QF_SLOTS.map((teams, i) => teams[(qMask >> i) & 1]);
 
+    // SF0: QF0w vs QF1w,  SF1: QF2w vs QF3w
     for (let sMask = 0; sMask < 4; sMask++) {
-      const sf0ms = state.koScores['sf_0'] || {};
-      const sf1ms = state.koScores['sf_1'] || {};
-
-      let sf0W, sf1W;
-      if (sf0ms.winner) {
-        const bt = _bt['sf_0'] || {};
-        sf0W = sf0ms.winner === 'A' ? (bt.tA||qfWinners[0]) : (bt.tB||qfWinners[1]);
-      } else {
-        sf0W = (sMask & 1) ? qfWinners[1] : qfWinners[0];
-      }
-      if (sf1ms.winner) {
-        const bt = _bt['sf_1'] || {};
-        sf1W = sf1ms.winner === 'A' ? (bt.tA||qfWinners[2]) : (bt.tB||qfWinners[3]);
-      } else {
-        sf1W = (sMask & 2) ? qfWinners[3] : qfWinners[2];
-      }
+      const sf0W = qfW[(sMask & 1) ? 1 : 0];
+      const sf1W = qfW[(sMask & 2) ? 3 : 2];
 
       for (let fMask = 0; fMask < 2; fMask++) {
-        const fms = state.koScores['f_0'] || {};
-        let fW;
-        if (fms.winner) {
-          const bt = _bt['f_0'] || {};
-          fW = fms.winner === 'A' ? (bt.tA||sf0W) : (bt.tB||sf1W);
-        } else {
-          fW = fMask ? sf1W : sf0W;
-        }
+        const fW = fMask ? sf1W : sf0W;
 
-        const simPts = {...basePts};
-        // Each QF winner gets +6 exactly once (qfWinners has one team per match)
-        qfWinners.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] = (simPts[o]||0) + 6; });
-        [sf0W, sf1W].forEach(t => { const o = teamOwner[t]; if (o) simPts[o] = (simPts[o]||0) + 7; });
-        if (fW) { const o = teamOwner[fW]; if (o) simPts[o] = (simPts[o]||0) + 10; }
+        const simPts = { ...basePts };
+        // +6 for each QF winner (exactly one per match, no doubles)
+        qfW.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 6; });
+        // +7 for SF winners
+        const o0 = teamOwner[sf0W], o1 = teamOwner[sf1W];
+        if (o0) simPts[o0] += 7;
+        if (o1) simPts[o1] += 7;
+        // +10 for Final winner
+        const of = teamOwner[fW];
+        if (of) simPts[of] += 10;
 
+        // Rank by pts → GD → GF
         const ranked = [...MANAGERS].sort((a, b) => {
           const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
           const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
