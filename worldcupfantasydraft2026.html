@@ -1542,13 +1542,17 @@ function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || 
 // With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
 // outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // Hardcoded QF bracket — teams confirmed from live results
-  // QF0: Morocco(Reed) vs France(Brandon)    SF0 left
-  // QF1: Spain(Danny) vs Belgium(Ray)        SF0 right  ← Danny/Ray play EACH OTHER
-  // QF2: Norway(Brian) vs England(Robbie)    SF1 left
-  // QF3: Argentina(Dan) vs Switzerland(Dan)  SF1 right  ← Dan gets +6 GUARANTEED
+  // Hardcoded QF bracket
+  const QF_SLOTS = [
+    ['Morocco','France'],
+    ['Spain','Belgium'],
+    ['Norway','England'],
+    ['Argentina','Switzerland'],
+  ];
 
-  // Base pts stripped of QF/SF/Final — we re-add those in simulation
+  const teamOwner = {};
+  MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
+
   const basePts = {};
   MANAGERS.forEach(m => {
     let p = mgrPts(m);
@@ -1561,45 +1565,24 @@ function simulateBracket() {
     basePts[m.name] = p;
   });
 
-  const teamOwner = {};
-  MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
-
-  // Manager names for each QF slot
-  const QF_SLOTS = [
-    ['Morocco','France'],       // QF0: Reed vs Brandon
-    ['Spain','Belgium'],        // QF1: Danny vs Ray — ONE must win, ONE must lose
-    ['Norway','England'],       // QF2: Brian vs Robbie
-    ['Argentina','Switzerland'],// QF3: Dan vs Dan — Dan gets +6 no matter what
-  ];
+  // DEBUG: log base pts so we can see what the sim starts from
+  console.log('SIM BASE PTS:', JSON.stringify(basePts));
+  console.log('ACTUAL mgrPts:', JSON.stringify(Object.fromEntries(MANAGERS.map(m=>[m.name,mgrPts(m)]))));
 
   const bestRank = {}, worstRank = {};
   MANAGERS.forEach(m => { bestRank[m.name] = MANAGERS.length; worstRank[m.name] = 1; });
 
-  // Enumerate 16 QF × 4 SF × 2 Final = 128 scenarios
   for (let qMask = 0; qMask < 16; qMask++) {
-    // One winner per QF — bit 0=QF0, bit 1=QF1, bit 2=QF2, bit 3=QF3
     const qfW = QF_SLOTS.map((teams, i) => teams[(qMask >> i) & 1]);
-
-    // SF0: QF0w vs QF1w,  SF1: QF2w vs QF3w
     for (let sMask = 0; sMask < 4; sMask++) {
       const sf0W = qfW[(sMask & 1) ? 1 : 0];
       const sf1W = qfW[(sMask & 2) ? 3 : 2];
-
       for (let fMask = 0; fMask < 2; fMask++) {
         const fW = fMask ? sf1W : sf0W;
-
         const simPts = { ...basePts };
-        // +6 for each QF winner (exactly one per match, no doubles)
         qfW.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 6; });
-        // +7 for SF winners
-        const o0 = teamOwner[sf0W], o1 = teamOwner[sf1W];
-        if (o0) simPts[o0] += 7;
-        if (o1) simPts[o1] += 7;
-        // +10 for Final winner
-        const of = teamOwner[fW];
-        if (of) simPts[of] += 10;
-
-        // Rank by pts → GD → GF
+        [sf0W, sf1W].forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 7; });
+        const of = teamOwner[fW]; if (of) simPts[of] += 10;
         const ranked = [...MANAGERS].sort((a, b) => {
           const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
           const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
@@ -1613,6 +1596,7 @@ function simulateBracket() {
       }
     }
   }
+  console.log('SIM RESULT:', JSON.stringify({bestRank, worstRank}));
   return { bestRank, worstRank };
 }
 function debugSim() {
