@@ -1561,19 +1561,24 @@ function simulateBracket() {
   // SF pairings: SF0 = QF0w vs QF1w, SF1 = QF2w vs QF3w
   // Final = SF0w vs SF1w
 
-  // Base pts = everything EXCEPT QF/SF/Final (which we simulate fresh).
-  // Use mgrPts() then subtract any QF/SF/Final pts already counted.
-  const QF_ROUNDS = new Set(['qf','sf','f']);
+  // Base pts: use mgrPts() which correctly reflects all settled results.
+  // The simulation adds QF/SF/Final on top — but only if those rounds
+  // haven't been settled yet. Check by seeing if any QF has a winner.
+  const anyQFDone = ['qf_0','qf_1','qf_2','qf_3'].some(id => (state.koScores[id]||{}).winner);
+  const QF_PTS = {qf:6,sf:7,f:10};
   const curPts = {};
   MANAGERS.forEach(m => {
     let p = mgrPts(m);
-    // Subtract any QF/SF/Final pts already in mgrPts
-    m.teams.forEach(t => {
-      const d = state.teams[t]; if (!d?.ko) return;
-      KO_ROUNDS.forEach(r => {
-        if (QF_ROUNDS.has(r.key) && d.ko[r.key]) p -= r.pts;
+    // If QFs have already started, subtract any QF/SF/Final pts already in mgrPts
+    // so the simulation can re-add them cleanly
+    if (anyQFDone) {
+      m.teams.forEach(t => {
+        const d = state.teams[t]; if (!d?.ko) return;
+        if (d.ko.qf) p -= 6;
+        if (d.ko.sf) p -= 7;
+        if (d.ko.f)  p -= 10;
       });
-    });
+    }
     curPts[m.name] = p;
   });
 
