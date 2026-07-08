@@ -1531,174 +1531,117 @@ function mgrMaxPossible(m) {
 }
 function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || state.teams[t].alive === false); }
 
+function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || state.teams[t].alive === false); }
+
 // ── BRACKET SIMULATION ────────────────────────────────────────────────────────
-// Enumerate all possible outcomes for remaining KO matches to find each
-// manager's guaranteed floor (worst-case rank) and ceiling (best-case rank).
+// With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
+// outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // Collect all remaining undecided KO matches in bracket order
-  const allIds = [
-    ...R32_MATCHES.map(m => m.id),
-    ...R16_PAIRINGS.map((_,i) => 'r16_'+i),
-    'qf_0','qf_1','qf_2','qf_3',
-    'sf_0','sf_1','f_0',
-  ];
+  // Find each manager's alive QF teams directly from _bt
+  computeBracket();
 
-  // A "state snapshot" is: for each match, who won (tA or tB)?
-  // We only simulate undecided matches where both teams are known.
-  const pending = allIds.filter(id => {
-    const ms = state.koScores[id] || {};
-    if (ms.winner) return false; // already decided
-    const bt = _bt[id] || {};
-    return bt.tA && bt.tB; // both teams known = can simulate
-  });
+  // Get the 8 QF teams from the 4 QF matches
+  const qfMatches = ['qf_0','qf_1','qf_2','qf_3'];
 
-  // Build per-manager KO pts from already-decided matches
-  function baseKoPts() {
-    const pts = {};
-    MANAGERS.forEach(m => { pts[m.name] = 0; });
-    allIds.forEach(id => {
-      const ms = state.koScores[id] || {};
-      if (!ms.winner) return;
-      const bt = _bt[id] || {};
-      const winner = ms.winner === 'A' ? bt.tA : bt.tB;
-      const roundKey = id.replace(/_\d+$/, '');
-      const round = KO_ROUNDS.find(r => r.key === roundKey);
-      if (!round || !winner) return;
-      MANAGERS.forEach(m => {
-        if (m.teams.includes(winner)) pts[m.name] += round.pts;
-      });
-    });
-    return pts;
-  }
+  // For each QF match, who is tA and tB?
+  const qfBt = qfMatches.map(id => _bt[id] || {});
 
-  const base = baseKoPts();
-  const groupPtsMap = {};
-  MANAGERS.forEach(m => { groupPtsMap[m.name] = m.teams.reduce((s,t) => s + groupPts(t), 0); });
+  // SF pairings: SF0 = QF0w vs QF1w, SF1 = QF2w vs QF3w
+  // Final = SF0w vs SF1w
 
-  // Track best/worst total pts and rank for each manager across all simulations
-  const bestPts  = {}, worstPts  = {};
-  const bestRank = {}, worstRank = {};
+  // Current group+KO pts for each manager
+  const curPts = {};
   MANAGERS.forEach(m => {
-    const cur = groupPtsMap[m.name] + base[m.name];
-    bestPts[m.name]  = cur;
-    worstPts[m.name] = cur;
-    bestRank[m.name]  = MANAGERS.length;
-    worstRank[m.name] = 1;
+    curPts[m.name] = mgrPts(m);
   });
 
-  // Simulate: try all 2^N outcome combinations for N pending matches
-  // Cap at 2^16 = 65536 combinations to keep it snappy
-  const n = Math.min(pending.length, 16);
-  const total = 1 << n;
+  const bestRank  = {}, worstRank = {};
+  MANAGERS.forEach(m => { bestRank[m.name] = MANAGERS.length; worstRank[m.name] = 1; });
 
-  // For each simulation, we need to know which team wins each pending match
-  // AND propagate those wins into later bracket slots (i.e. update _bt for
-  // later rounds). We do a lightweight bracket propagation per simulation.
-  for (let mask = 0; mask < total; mask++) {
-    // Build a local winner map for this simulation
-    const simWinner = {}; // matchId → winning team name
-    const simBt = {}; // matchId → {tA, tB} including propagated teams
-    Object.assign(simBt, _bt); // start from real bracket
+  // 4 QF winners (bits 0-3) + 2 SF winners chosen from QF winners (bits 4-5) + 
+  // Final winner (bit 6) — but SF/Final winners must come from the right bracket side.
+  // Simpler: enumerate 4 QF outcomes (2^4=16), then derive SF and Final outcomes (2^2=4 for SFs, 2^1=2 for Final)
+  // Total: 16 * 4 * 2 = 128 combinations
 
-    // Process matches in order so propagation works
-    for (let i = 0; i < n; i++) {
-      const id = pending[i];
-      const bt = simBt[id] || _bt[id] || {};
-      const tA = bt.tA, tB = bt.tB;
-      if (!tA || !tB) continue;
-      simWinner[id] = (mask >> i) & 1 ? tB : tA;
-      // Propagate winner into later bracket slots
-      propagateWinner(id, simWinner[id], simBt);
+  for (let qfMask = 0; qfMask < 16; qfMask++) {
+    // Determine QF winners
+    const qfW = qfMatches.map((id, i) => {
+      const bt = qfBt[i];
+      if (!bt.tA || !bt.tB) return null;
+      // Check if already decided
+      const ms = state.koScores[id] || {};
+      if (ms.winner) return ms.winner === 'A' ? bt.tA : bt.tB;
+      return (qfMask >> i) & 1 ? bt.tB : bt.tA;
+    });
+
+    // SF matchups: SF0 = qfW[0] vs qfW[1], SF1 = qfW[2] vs qfW[3]
+    for (let sfMask = 0; sfMask < 4; sfMask++) {
+      const sf0W = (sfMask & 1) ? qfW[1] : qfW[0];
+      const sf1W = (sfMask & 2) ? qfW[3] : qfW[2];
+      if (!sf0W || !sf1W) continue;
+
+      // Skip if SF outcome contradicts a decided SF
+      const sf0ms = state.koScores['sf_0'] || {};
+      const sf1ms = state.koScores['sf_1'] || {};
+      if (sf0ms.winner) {
+        const real = sf0ms.winner === 'A' ? _bt['sf_0']?.tA : _bt['sf_0']?.tB;
+        if (real && sf0W !== real) continue;
+      }
+      if (sf1ms.winner) {
+        const real = sf1ms.winner === 'A' ? _bt['sf_1']?.tA : _bt['sf_1']?.tB;
+        if (real && sf1W !== real) continue;
+      }
+
+      // Final
+      for (let fMask = 0; fMask < 2; fMask++) {
+        const fW = fMask ? sf1W : sf0W;
+        const fms = state.koScores['f_0'] || {};
+        if (fms.winner) {
+          const real = fms.winner === 'A' ? _bt['f_0']?.tA : _bt['f_0']?.tB;
+          if (real && fW !== real) continue;
+        }
+
+        // Compute pts for each manager in this scenario
+        const simPts = {};
+        MANAGERS.forEach(m => { simPts[m.name] = curPts[m.name]; });
+
+        // Add QF pts
+        qfMatches.forEach((id, i) => {
+          const w = qfW[i]; if (!w) return;
+          const ms = state.koScores[id] || {};
+          if (ms.winner) return; // already counted in curPts
+          MANAGERS.forEach(m => { if (m.teams.includes(w)) simPts[m.name] += 6; });
+        });
+        // Add SF pts
+        [[sf0W,'sf_0'],[sf1W,'sf_1']].forEach(([w, id]) => {
+          if (!w) return;
+          const ms = state.koScores[id] || {};
+          if (ms.winner) return;
+          MANAGERS.forEach(m => { if (m.teams.includes(w)) simPts[m.name] += 7; });
+        });
+        // Add Final pts
+        if (fW) {
+          const fms2 = state.koScores['f_0'] || {};
+          if (!fms2.winner) {
+            MANAGERS.forEach(m => { if (m.teams.includes(fW)) simPts[m.name] += 10; });
+          }
+        }
+
+        // Rank this scenario
+        const ranked = [...MANAGERS].sort((a,b) => {
+          const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
+          return mgrGD(b) - mgrGD(a);
+        });
+        MANAGERS.forEach(m => {
+          const rank = ranked.findIndex(r => r.name === m.name) + 1;
+          if (rank < bestRank[m.name])  bestRank[m.name]  = rank;
+          if (rank > worstRank[m.name]) worstRank[m.name] = rank;
+        });
+      }
     }
-
-    // Compute total pts for each manager under this simulation
-    const simPts = {};
-    MANAGERS.forEach(m => {
-      simPts[m.name] = groupPtsMap[m.name] + base[m.name];
-    });
-    // Add pts from simulated outcomes
-    for (let i = 0; i < n; i++) {
-      const id = pending[i];
-      const winner = simWinner[id];
-      if (!winner) continue;
-      const roundKey = id.replace(/_\d+$/, '');
-      const round = KO_ROUNDS.find(r => r.key === roundKey);
-      if (!round) continue;
-      MANAGERS.forEach(m => {
-        if (m.teams.includes(winner)) simPts[m.name] += round.pts;
-      });
-    }
-
-    // Rank managers in this simulation
-    const ranked = [...MANAGERS].sort((a, b) => {
-      const dp = simPts[b.name] - simPts[a.name];
-      if (dp !== 0) return dp;
-      // Use current GD/GF as tiebreaker (simplified - full sim would need GD tracking)
-      const dg = mgrGD(b) - mgrGD(a);
-      if (dg !== 0) return dg;
-      return mgrGF(b) - mgrGF(a);
-    });
-
-    MANAGERS.forEach(m => {
-      const pts = simPts[m.name];
-      const rank = ranked.findIndex(r => r.name === m.name) + 1;
-      if (pts > bestPts[m.name])   bestPts[m.name]  = pts;
-      if (pts < worstPts[m.name])  worstPts[m.name] = pts;
-      if (rank < bestRank[m.name]) bestRank[m.name] = rank;
-      if (rank > worstRank[m.name]) worstRank[m.name] = rank;
-    });
   }
 
-  return { bestRank, worstRank, bestPts, worstPts };
-}
-
-function propagateWinner(matchId, winner, simBt) {
-  // Figure out which later bracket slot this match's winner feeds into
-  // R32 → R16
-  const r32idx = R32_MATCHES.findIndex(m => m.id === matchId);
-  if (r32idx >= 0) {
-    R16_PAIRINGS.forEach((pair, i) => {
-      const slot = pair.indexOf(r32idx);
-      if (slot < 0) return;
-      const r16id = 'r16_' + i;
-      simBt[r16id] = simBt[r16id] ? {...simBt[r16id]} : {};
-      if (slot === 0) simBt[r16id].tA = winner;
-      else            simBt[r16id].tB = winner;
-    });
-  }
-  // R16 → QF
-  const r16idx = parseInt(matchId.replace('r16_',''));
-  if (!isNaN(r16idx) && matchId.startsWith('r16_')) {
-    const qfPairs = [[0,1],[2,3],[4,5],[6,7]];
-    qfPairs.forEach((pair, qi) => {
-      const slot = pair.indexOf(r16idx);
-      if (slot < 0) return;
-      const qfid = 'qf_' + qi;
-      simBt[qfid] = simBt[qfid] ? {...simBt[qfid]} : {};
-      if (slot === 0) simBt[qfid].tA = winner;
-      else            simBt[qfid].tB = winner;
-    });
-  }
-  // QF → SF
-  const qfIdx = parseInt(matchId.replace('qf_',''));
-  if (!isNaN(qfIdx) && matchId.startsWith('qf_')) {
-    const sfPairs = [[0,1],[2,3]];
-    sfPairs.forEach((pair, si) => {
-      const slot = pair.indexOf(qfIdx);
-      if (slot < 0) return;
-      const sfid = 'sf_' + si;
-      simBt[sfid] = simBt[sfid] ? {...simBt[sfid]} : {};
-      if (slot === 0) simBt[sfid].tA = winner;
-      else            simBt[sfid].tB = winner;
-    });
-  }
-  // SF → Final
-  const sfIdx = parseInt(matchId.replace('sf_',''));
-  if (!isNaN(sfIdx) && matchId.startsWith('sf_')) {
-    simBt['f_0'] = simBt['f_0'] ? {...simBt['f_0']} : {};
-    if (sfIdx === 0) simBt['f_0'].tA = winner;
-    else             simBt['f_0'].tB = winner;
-  }
+  return { bestRank, worstRank };
 }
 
 function lbSorted() {
