@@ -1640,6 +1640,34 @@ function simulateBracket() {
   return { bestRank, worstRank };
 }
 
+function debugSim() {
+  const sim = simulateBracket();
+  const base = {};
+  MANAGERS.forEach(m => {
+    let p = mgrPts(m);
+    m.teams.forEach(t => {
+      const d = state.teams[t]; if (!d?.ko) return;
+      if (d.ko.qf) p -= 6;
+      if (d.ko.sf) p -= 7;
+      if (d.ko.f)  p -= 10;
+    });
+    base[m.name] = p;
+  });
+  console.table(MANAGERS.map(m => ({
+    name: m.name,
+    basePts: base[m.name],
+    totalPts: mgrPts(m),
+    best: sim.bestRank[m.name],
+    worst: sim.worstRank[m.name],
+  })));
+  console.log('QF koScores:', JSON.stringify({
+    qf0: state.koScores?.qf_0,
+    qf1: state.koScores?.qf_1,
+    qf2: state.koScores?.qf_2,
+    qf3: state.koScores?.qf_3,
+  }));
+}
+
 function lbSorted() {
   return [...MANAGERS].sort((a,b)=>{
     const dp = mgrPts(b) - mgrPts(a); if (dp !== 0) return dp;
