@@ -704,8 +704,8 @@
           <th class="r" style="width:60px">GD</th>
           <th class="r" style="width:50px">GF</th>
           <th class="r" style="width:54px" title="Current points + max possible remaining">Max</th>
-          <th class="r" style="width:140px" title="Possible finishing positions">Range</th>
-          <th class="r" style="width:44px">MP</th>
+          <th class="r" style="width:140px" title="Possible finishing positions">Possible Finish</th>
+        </tr></thead>
         </tr></thead>
         <tbody id="lb-body"></tbody>
       </table>
@@ -1542,22 +1542,36 @@ function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || 
 // With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
 // outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // Find each manager's alive QF teams directly from _bt
   computeBracket();
 
-  // Get the 8 QF teams from the 4 QF matches
   const qfMatches = ['qf_0','qf_1','qf_2','qf_3'];
 
-  // For each QF match, who is tA and tB?
-  const qfBt = qfMatches.map(id => _bt[id] || {});
+  // Use _bt if populated, otherwise fall back to known QF8 teams
+  const KNOWN_QF = {
+    'qf_0': { tA:'Morocco',     tB:'France'      },
+    'qf_1': { tA:'Spain',       tB:'Belgium'     },
+    'qf_2': { tA:'Norway',      tB:'England'     },
+    'qf_3': { tA:'Argentina',   tB:'Switzerland' },
+  };
+  const qfBt = qfMatches.map(id => {
+    const bt = _bt[id] || {};
+    return { tA: bt.tA || KNOWN_QF[id].tA, tB: bt.tB || KNOWN_QF[id].tB };
+  });
 
   // SF pairings: SF0 = QF0w vs QF1w, SF1 = QF2w vs QF3w
   // Final = SF0w vs SF1w
 
-  // Current group+KO pts for each manager
+  // Base pts = group pts + R32 + R16 only (exclude QF/SF/Final which we simulate fresh)
   const curPts = {};
   MANAGERS.forEach(m => {
-    curPts[m.name] = mgrPts(m);
+    let p = m.teams.reduce((s,t) => {
+      const d = state.teams[t]; if (!d) return s;
+      s += d.w*3 + d.d; // group pts
+      if (d.ko?.r32) s += 4;
+      if (d.ko?.r16) s += 5;
+      return s;
+    }, 0);
+    curPts[m.name] = p;
   });
 
   const bestRank  = {}, worstRank = {};
@@ -1610,32 +1624,26 @@ function simulateBracket() {
         const simPts = {};
         MANAGERS.forEach(m => { simPts[m.name] = curPts[m.name]; });
 
-        // Add QF pts
+        // Add QF pts to winner in this scenario
         qfMatches.forEach((id, i) => {
           const w = qfW[i]; if (!w) return;
-          const ms = state.koScores[id] || {};
-          if (ms.winner) return; // already counted in curPts
           MANAGERS.forEach(m => { if (m.teams.includes(w)) simPts[m.name] += 6; });
         });
         // Add SF pts
-        [[sf0W,'sf_0'],[sf1W,'sf_1']].forEach(([w, id]) => {
+        [[sf0W,'sf_0'],[sf1W,'sf_1']].forEach(([w]) => {
           if (!w) return;
-          const ms = state.koScores[id] || {};
-          if (ms.winner) return;
           MANAGERS.forEach(m => { if (m.teams.includes(w)) simPts[m.name] += 7; });
         });
         // Add Final pts
         if (fW) {
-          const fms2 = state.koScores['f_0'] || {};
-          if (!fms2.winner) {
-            MANAGERS.forEach(m => { if (m.teams.includes(fW)) simPts[m.name] += 10; });
-          }
+          MANAGERS.forEach(m => { if (m.teams.includes(fW)) simPts[m.name] += 10; });
         }
 
         // Rank this scenario
         const ranked = [...MANAGERS].sort((a,b) => {
           const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
-          return mgrGD(b) - mgrGD(a);
+          const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
+          return mgrGF(b) - mgrGF(a);
         });
         MANAGERS.forEach(m => {
           const rank = ranked.findIndex(r => r.name === m.name) + 1;
@@ -1854,8 +1862,7 @@ function renderLeaderboard() {
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
       <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : pts + mgrMaxPossible(m)}</td>
-      <td class="r rank-range-cell">${rankRangeHTML(sim.bestRank[m.name], sim.worstRank[m.name])}</td>
-      <td class="r mp-cell">${mp}</td>`;
+      <td class="r rank-range-cell">${rankRangeHTML(sim.bestRank[m.name], sim.worstRank[m.name])}</td>`;
     tbody.appendChild(tr);
 
     // Team breakdown row (hidden by default)
