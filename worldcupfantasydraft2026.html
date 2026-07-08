@@ -1561,16 +1561,19 @@ function simulateBracket() {
   // SF pairings: SF0 = QF0w vs QF1w, SF1 = QF2w vs QF3w
   // Final = SF0w vs SF1w
 
-  // Base pts = group pts + R32 + R16 only (exclude QF/SF/Final which we simulate fresh)
+  // Base pts = everything EXCEPT QF/SF/Final (which we simulate fresh).
+  // Use mgrPts() then subtract any QF/SF/Final pts already counted.
+  const QF_ROUNDS = new Set(['qf','sf','f']);
   const curPts = {};
   MANAGERS.forEach(m => {
-    let p = m.teams.reduce((s,t) => {
-      const d = state.teams[t]; if (!d) return s;
-      s += d.w*3 + d.d; // group pts
-      if (d.ko?.r32) s += 4;
-      if (d.ko?.r16) s += 5;
-      return s;
-    }, 0);
+    let p = mgrPts(m);
+    // Subtract any QF/SF/Final pts already in mgrPts
+    m.teams.forEach(t => {
+      const d = state.teams[t]; if (!d?.ko) return;
+      KO_ROUNDS.forEach(r => {
+        if (QF_ROUNDS.has(r.key) && d.ko[r.key]) p -= r.pts;
+      });
+    });
     curPts[m.name] = p;
   });
 
