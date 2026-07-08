@@ -115,6 +115,12 @@
   .max-cell{font-size:14px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0;}
   .sim-best{font-size:13px;color:var(--green);font-family:'DM Mono',monospace;letter-spacing:0;}
   .sim-worst{font-size:13px;color:#c53030;font-family:'DM Mono',monospace;letter-spacing:0;}
+  .rank-range-cell{padding:4px 6px !important;}
+  .rank-range{display:flex;gap:2px;align-items:center;justify-content:flex-end;}
+  .rank-pip{display:inline-flex;align-items:center;justify-content:center;width:18px;height:20px;border-radius:4px;font-size:11px;font-family:'DM Mono',monospace;font-weight:600;cursor:default;transition:opacity 0.1s;}
+  .rank-pip.possible{background:#c53030;color:#fff;}
+  .rank-pip.locked{background:#c53030;color:#fff;opacity:0.85;}
+  .rank-pip.inactive{background:transparent;color:var(--text-muted);opacity:0.25;}
   .pts-cell{font-weight:700;font-size:23px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:0;text-shadow:0 0 12px var(--gold-glow);}
   .gd-cell{font-size:17px;font-family:'DM Mono',monospace;letter-spacing:0;}
   .team-chips{display:flex;flex-wrap:wrap;gap:4px;}
@@ -698,8 +704,7 @@
           <th class="r" style="width:60px">GD</th>
           <th class="r" style="width:50px">GF</th>
           <th class="r" style="width:54px" title="Current points + max possible remaining">Max</th>
-          <th class="r" style="width:46px" title="Best possible finishing rank">🏆</th>
-          <th class="r" style="width:46px" title="Worst possible finishing rank">📉</th>
+          <th class="r" style="width:140px" title="Possible finishing positions">Range</th>
           <th class="r" style="width:44px">MP</th>
         </tr></thead>
         <tbody id="lb-body"></tbody>
@@ -1816,6 +1821,17 @@ function renderNextUp() {
     <div class="next-up-cards ${picks.length > 1 ? 'two-up' : ''}">${picks.map(matchHTML).join('')}</div>`;
 }
 
+function rankRangeHTML(best, worst) {
+  const pips = [];
+  for (let i = 1; i <= 10; i++) {
+    const inRange = i >= best && i <= worst;
+    const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
+    const title = inRange ? (best === worst ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
+    pips.push(`<span class="rank-pip ${cls}" title="${title}">${i}</span>`);
+  }
+  return `<div class="rank-range">${pips.join('')}</div>`;
+}
+
 function renderLeaderboard() {
   const sorted=lbSorted();
   // Cache simulation — only recompute once per render
@@ -1838,8 +1854,7 @@ function renderLeaderboard() {
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
       <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : pts + mgrMaxPossible(m)}</td>
-      <td class="r sim-best" title="Best possible finish">${sim.bestRank[m.name] === sim.worstRank[m.name] ? '—' : '#'+sim.bestRank[m.name]}</td>
-      <td class="r sim-worst" title="Worst possible finish">${sim.bestRank[m.name] === sim.worstRank[m.name] ? '#'+sim.worstRank[m.name] : '#'+sim.worstRank[m.name]}</td>
+      <td class="r rank-range-cell">${rankRangeHTML(sim.bestRank[m.name], sim.worstRank[m.name])}</td>
       <td class="r mp-cell">${mp}</td>`;
     tbody.appendChild(tr);
 
