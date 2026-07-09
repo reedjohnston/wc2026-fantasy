@@ -1583,51 +1583,36 @@ function simulateBracket() {
         qfW.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 6; });
         [sf0W, sf1W].forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 7; });
         const of = teamOwner[fW]; if (of) simPts[of] += 10;
-        // When pts tie, both orderings are possible (future GD could break either way)
-        // So we generate two rankings: one favoring higher current GD, one favoring lower
-        const sortedByPts = [...MANAGERS].sort((a, b) => simPts[b.name] - simPts[a.name]);
-        
-        // Group managers with equal pts
-        const ptGroups = [];
-        let i = 0;
-        while (i < sortedByPts.length) {
-          let j = i;
-          while (j < sortedByPts.length && simPts[sortedByPts[j].name] === simPts[sortedByPts[i].name]) j++;
-          ptGroups.push(sortedByPts.slice(i, j));
-          i = j;
-        }
-        
-        // Generate all permutations within tied groups to find best/worst for each manager
-        function permute(arr) {
-          if (arr.length <= 1) return [arr];
-          const result = [];
-          for (let k = 0; k < arr.length; k++) {
-            const rest = permute([...arr.slice(0,k), ...arr.slice(k+1)]);
-            rest.forEach(p => result.push([arr[k], ...p]));
-          }
-          return result;
-        }
-        
-        // Build all possible orderings considering tied groups
-        let allOrderings = [[]];
-        let rankOffset = 0;
-        ptGroups.forEach(group => {
-          if (group.length === 1) {
-            allOrderings = allOrderings.map(o => [...o, {name: group[0].name, rank: rankOffset + 1}]);
-          } else {
-            // Multiple managers tied on pts — all orderings within group are possible
-            const perms = permute(group.map((m,idx) => ({name: m.name, rank: rankOffset + idx + 1})));
-            allOrderings = allOrderings.flatMap(o => perms.map(p => [...o, ...p]));
-          }
-          rankOffset += group.length;
+        // Rank by pts → GD → GF
+        const ranked = [...MANAGERS].sort((a, b) => {
+          const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
+          const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
+          return mgrGF(b) - mgrGF(a);
         });
-        
-        allOrderings.forEach(ordering => {
-          ordering.forEach(({name, rank}) => {
-            if (rank < bestRank[name]) bestRank[name] = rank;
-            if (rank > worstRank[name]) worstRank[name] = rank;
-          });
+        MANAGERS.forEach(m => {
+          const rank = ranked.findIndex(r => r.name === m.name) + 1;
+          if (rank < bestRank[m.name]) bestRank[m.name] = rank;
+          if (rank > worstRank[m.name]) worstRank[m.name] = rank;
         });
+        // Alive teams in this scenario (won a match = sf or final)
+        const aliveNow = new Set([...qfW, sf0W, sf1W, fW]);
+        // For pts ties where BOTH managers have alive teams, GD could go either way
+        for (let ai = 0; ai < MANAGERS.length - 1; ai++) {
+          for (let bi = ai + 1; bi < MANAGERS.length; bi++) {
+            const ma = MANAGERS[ai], mb = MANAGERS[bi];
+            if (simPts[ma.name] !== simPts[mb.name]) continue;
+            const aHasAlive = ma.teams.some(t => aliveNow.has(t));
+            const bHasAlive = mb.teams.some(t => aliveNow.has(t));
+            if (!aHasAlive || !bHasAlive) continue; // at least one has no alive team = GD fixed
+            const rankA = ranked.findIndex(r => r.name === ma.name) + 1;
+            const rankB = ranked.findIndex(r => r.name === mb.name) + 1;
+            // Allow swap
+            if (rankA < bestRank[mb.name]) bestRank[mb.name] = rankA;
+            if (rankA > worstRank[mb.name]) worstRank[mb.name] = rankA;
+            if (rankB < bestRank[ma.name]) bestRank[ma.name] = rankB;
+            if (rankB > worstRank[ma.name]) worstRank[ma.name] = rankB;
+          }
+        }
       }
     }
   }
