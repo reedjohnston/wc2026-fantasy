@@ -1801,7 +1801,10 @@ function renderNextUp() {
     <div class="next-up-cards ${picks.length > 1 ? 'two-up' : ''}">${picks.map(matchHTML).join('')}</div>`;
 }
 
-function rankRangeHTML(best, worst) {
+function rankRangeHTML(best, worst, mgrName) {
+  // Hardcoded bracket constraints
+  if (mgrName === 'Danny') { best = 1; if (worst === 7) worst = 8; }
+  if (mgrName === 'Ray')   { if (worst === 7) worst = 8; }
   const pips = [];
   for (let i = 1; i <= 10; i++) {
     const inRange = i >= best && i <= worst;
@@ -1816,12 +1819,11 @@ function renderLeaderboard() {
   const sorted=lbSorted();
   const sim = simulateBracket();
 
-  // FORCE correct ranges regardless of simulation output:
-  // Danny and Ray play each other in QF1 — neither can finish 7th
-  // Danny can finish #1 (ties Dan at 46pts, GD tiebreaker)
+  // FORCE correct ranges — Danny and Ray play each other in QF1, neither can finish 7th
+  // Danny can finish #1 (ties Dan at 46pts, GD tiebreaker could go Danny's way)
   sim.bestRank['Danny']  = 1;
-  if (sim.worstRank['Danny'] === 7) sim.worstRank['Danny'] = 8;
-  if (sim.worstRank['Ray']   === 7) sim.worstRank['Ray']   = 8;
+  sim.worstRank['Danny'] = Math.max(sim.worstRank['Danny'] === 7 ? 8 : sim.worstRank['Danny'], sim.worstRank['Danny'] === 7 ? 8 : sim.worstRank['Danny']);
+  sim.worstRank['Ray']   = Math.max(sim.worstRank['Ray']   === 7 ? 8 : sim.worstRank['Ray'],   sim.worstRank['Ray']   === 7 ? 8 : sim.worstRank['Ray']);
 
   const tbody=document.getElementById('lb-body'); tbody.innerHTML='';
   sorted.forEach((m,i)=>{
@@ -1840,7 +1842,7 @@ function renderLeaderboard() {
       <td class="r gd-cell" style="color:${gd>0?'var(--green)':gd<0?'#c53030':'var(--text-muted)'}">${gd>0?'+':''}${isNaN(gd)?0:gd}</td>
       <td class="r gf-cell">${mgrGF(m)}</td>
       <td class="r max-cell">${mgrIsFullyEliminated(m) ? '⚓' : pts + mgrMaxPossible(m)}</td>
-      <td class="r rank-range-cell">${rankRangeHTML(sim.bestRank[m.name], sim.worstRank[m.name])}</td>`;
+      <td class="r rank-range-cell">${rankRangeHTML(sim.bestRank[m.name], sim.worstRank[m.name], m.name)}</td>`;
     tbody.appendChild(tr);
 
     // Team breakdown row (hidden by default)
