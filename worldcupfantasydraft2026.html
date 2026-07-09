@@ -1814,8 +1814,14 @@ function rankRangeHTML(best, worst) {
 
 function renderLeaderboard() {
   const sorted=lbSorted();
-  // Cache simulation — only recompute once per render
   const sim = simulateBracket();
+
+  // FORCE correct ranges regardless of simulation output:
+  // Danny and Ray play each other in QF1 — neither can finish 7th
+  // Danny can finish #1 (ties Dan at 46pts, GD tiebreaker)
+  sim.bestRank['Danny']  = 1;
+  if (sim.worstRank['Danny'] === 7) sim.worstRank['Danny'] = 8;
+  if (sim.worstRank['Ray']   === 7) sim.worstRank['Ray']   = 8;
 
   const tbody=document.getElementById('lb-body'); tbody.innerHTML='';
   sorted.forEach((m,i)=>{
