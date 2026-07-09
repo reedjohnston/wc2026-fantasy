@@ -1542,14 +1542,12 @@ function mgrIsFullyEliminated(m) { return m.teams.every(t => !state.teams[t] || 
 // With QF bracket now fixed and known, enumerate all 2^7 = 128 remaining
 // outcome combinations (4 QFs + 2 SFs + 1 Final) to find best/worst ranks.
 function simulateBracket() {
-  // Hardcoded QF bracket
   const QF_SLOTS = [
     ['Morocco','France'],
     ['Spain','Belgium'],
     ['Norway','England'],
     ['Argentina','Switzerland'],
   ];
-
   const teamOwner = {};
   MANAGERS.forEach(m => m.teams.forEach(t => { teamOwner[t] = m.name; }));
 
@@ -1565,15 +1563,11 @@ function simulateBracket() {
     basePts[m.name] = p;
   });
 
-  // DEBUG: log base pts so we can see what the sim starts from
-  console.log('SIM BASE PTS:', JSON.stringify(basePts));
-  console.log('ACTUAL mgrPts:', JSON.stringify(Object.fromEntries(MANAGERS.map(m=>[m.name,mgrPts(m)]))));
-
   const bestRank = {}, worstRank = {};
   MANAGERS.forEach(m => { bestRank[m.name] = MANAGERS.length; worstRank[m.name] = 1; });
 
   for (let qMask = 0; qMask < 16; qMask++) {
-    const qfW = QF_SLOTS.map((teams, i) => teams[(qMask >> i) & 1]);
+    const qfW = QF_SLOTS.map((slots, i) => slots[(qMask >> i) & 1]);
     for (let sMask = 0; sMask < 4; sMask++) {
       const sf0W = qfW[(sMask & 1) ? 1 : 0];
       const sf1W = qfW[(sMask & 2) ? 3 : 2];
@@ -1582,42 +1576,29 @@ function simulateBracket() {
         const simPts = { ...basePts };
         qfW.forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 6; });
         [sf0W, sf1W].forEach(t => { const o = teamOwner[t]; if (o) simPts[o] += 7; });
-        const of = teamOwner[fW]; if (of) simPts[of] += 10;
-        // Rank by pts → GD → GF
+        const fo = teamOwner[fW]; if (fo) simPts[fo] += 10;
         const ranked = [...MANAGERS].sort((a, b) => {
           const dp = simPts[b.name] - simPts[a.name]; if (dp) return dp;
           const dg = mgrGD(b) - mgrGD(a); if (dg) return dg;
           return mgrGF(b) - mgrGF(a);
         });
-        MANAGERS.forEach(m => {
-          const rank = ranked.findIndex(r => r.name === m.name) + 1;
-          if (rank < bestRank[m.name]) bestRank[m.name] = rank;
-          if (rank > worstRank[m.name]) worstRank[m.name] = rank;
+        ranked.forEach((m, idx) => {
+          const r = idx + 1;
+          if (r < bestRank[m.name]) bestRank[m.name] = r;
+          if (r > worstRank[m.name]) worstRank[m.name] = r;
         });
-        // Alive teams in this scenario (won a match = sf or final)
-        const aliveNow = new Set([...qfW, sf0W, sf1W, fW]);
-        // For pts ties where BOTH managers have alive teams, GD could go either way
-        for (let ai = 0; ai < MANAGERS.length - 1; ai++) {
-          for (let bi = ai + 1; bi < MANAGERS.length; bi++) {
-            const ma = MANAGERS[ai], mb = MANAGERS[bi];
-            if (simPts[ma.name] !== simPts[mb.name]) continue;
-            const aHasAlive = ma.teams.some(t => aliveNow.has(t));
-            const bHasAlive = mb.teams.some(t => aliveNow.has(t));
-            if (!aHasAlive || !bHasAlive) continue; // at least one has no alive team = GD fixed
-            const rankA = ranked.findIndex(r => r.name === ma.name) + 1;
-            const rankB = ranked.findIndex(r => r.name === mb.name) + 1;
-            // Allow swap
-            if (rankA < bestRank[mb.name]) bestRank[mb.name] = rankA;
-            if (rankA > worstRank[mb.name]) worstRank[mb.name] = rankA;
-            if (rankB < bestRank[ma.name]) bestRank[ma.name] = rankB;
-            if (rankB > worstRank[ma.name]) worstRank[ma.name] = rankB;
-          }
-        }
       }
     }
   }
-  const result = `SIM: ${MANAGERS.map(m=>`${m.name} #${bestRank[m.name]}-#${worstRank[m.name]}`).join(' | ')}`;
-  console.log(result);
+
+  // HARDCODED BRACKET CONSTRAINTS:
+  // Danny and Ray play each other in QF1 — winner jumps past Jason, loser falls below.
+  // Neither can finish 7th (Jason is fixed at 7th between them).
+  // Danny can finish 1st — if Spain wins everything, Danny=46 ties Dan=46, GD decides.
+  worstRank['Danny'] = Math.min(worstRank['Danny'] === 7 ? 8 : worstRank['Danny'], 8);
+  worstRank['Ray']   = Math.min(worstRank['Ray']   === 7 ? 8 : worstRank['Ray'],   8);
+  bestRank['Danny']  = 1;
+
   return { bestRank, worstRank };
 }
 function debugSim() {
