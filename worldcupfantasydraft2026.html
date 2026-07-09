@@ -1812,13 +1812,18 @@ function renderNextUp() {
 }
 
 function rankRangeHTML(best, worst, mgrName) {
-  // Hardcoded: Danny can finish 1st; Danny and Ray cannot finish 7th
+  // Hardcoded bracket constraints based on confirmed results:
+  // Morocco eliminated → Reed stays at 42, Dan guaranteed 46 → Reed cannot finish 1st
+  if (mgrName === 'Reed')  { best = Math.max(best, 2); }
+  // Danny and Ray play each other in QF1 — neither can finish 7th
+  // Danny can finish 1st (ties Dan at 46pts, GD decides)
   if (mgrName === 'Danny') { best = 1; worst = worst > 7 ? worst : 8; }
   if (mgrName === 'Ray')   { worst = worst > 7 ? worst : 8; }
   const pips = [];
   for (let i = 1; i <= 10; i++) {
-    // Explicitly exclude 7 for Danny and Ray
-    const excluded = (mgrName === 'Danny' || mgrName === 'Ray') && i === 7;
+    // Explicitly exclude 7 for Danny and Ray, and 1 for Reed
+    const excluded = ((mgrName === 'Danny' || mgrName === 'Ray') && i === 7)
+                  || (mgrName === 'Reed' && i === 1);
     const inRange = !excluded && i >= best && i <= worst;
     const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
     const title = inRange ? (best === worst ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
