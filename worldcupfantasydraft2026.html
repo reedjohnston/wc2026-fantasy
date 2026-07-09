@@ -305,17 +305,27 @@
 
     /* Leaderboard — restructure for mobile */
     .lb-table th:nth-child(3), .lb-table td:nth-child(3) { display:none; } /* hide Teams col */
-    .lb-table th, .lb-table td { padding:8px 6px; }
-    .lb-table th:nth-child(1), .lb-table td:nth-child(1) { width:32px; padding-left:8px; }
-    .lb-table th:nth-child(4), .lb-table td:nth-child(4) { width:44px; } /* Pts */
-    .lb-table th:nth-child(5), .lb-table td:nth-child(5) { width:38px; } /* GD */
-    .lb-table th:nth-child(6), .lb-table td:nth-child(6) { width:36px; padding-right:8px; } /* MP */
+    .lb-table th:nth-child(5), .lb-table td:nth-child(5) { display:none; } /* hide GD col */
+    .lb-table th:nth-child(6), .lb-table td:nth-child(6) { display:none; } /* hide GF col */
+    .lb-table th:nth-child(7), .lb-table td:nth-child(7) { display:none; } /* hide MAX col */
+    .lb-table th, .lb-table td { padding:6px 3px; }
+    .lb-table th:nth-child(1), .lb-table td:nth-child(1) { width:24px; padding-left:6px; }
+    .lb-table th:nth-child(4), .lb-table td:nth-child(4) { width:36px; } /* Pts */
+    .lb-table th:nth-child(8), .lb-table td:nth-child(8) { width:auto; padding-right:2px; } /* Possible Finish */
     .manager-name { font-size:13px; }
     .manager-teams-mobile { display:flex; flex-wrap:wrap; gap:3px; margin-top:4px; }
     .mp-cell { font-size:14px; }
-    .pts-cell { font-size:18px; }
-    .gd-cell { font-size:14px; }
+    .pts-cell { font-size:16px; }
+    .gd-cell { font-size:13px; }
+    .gf-cell { font-size:13px; }
     .chip { font-size:11px; padding:2px 5px; }
+    /* Compact team chips in manager column on mobile */
+    .team-chips { gap:2px; }
+    .team-chips .chip { font-size:10px; padding:1px 4px; }
+    /* Smaller pips on mobile */
+    .rank-pip { width:12px; height:15px; font-size:8px; border-radius:2px; }
+    .rank-range { gap:1px; justify-content:flex-start; }
+    .rank-range-cell { padding:4px 2px !important; }
 
     /* Actions bar */
     .actions-bar { flex-direction:column; align-items:flex-start; gap:8px; }
