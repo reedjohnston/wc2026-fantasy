@@ -1802,12 +1802,14 @@ function renderNextUp() {
 }
 
 function rankRangeHTML(best, worst, mgrName) {
-  // Hardcoded bracket constraints
-  if (mgrName === 'Danny') { best = 1; if (worst === 7) worst = 8; }
-  if (mgrName === 'Ray')   { if (worst === 7) worst = 8; }
+  // Hardcoded: Danny can finish 1st; Danny and Ray cannot finish 7th
+  if (mgrName === 'Danny') { best = 1; worst = worst > 7 ? worst : 8; }
+  if (mgrName === 'Ray')   { worst = worst > 7 ? worst : 8; }
   const pips = [];
   for (let i = 1; i <= 10; i++) {
-    const inRange = i >= best && i <= worst;
+    // Explicitly exclude 7 for Danny and Ray
+    const excluded = (mgrName === 'Danny' || mgrName === 'Ray') && i === 7;
+    const inRange = !excluded && i >= best && i <= worst;
     const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
     const title = inRange ? (best === worst ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
     pips.push(`<span class="rank-pip ${cls}" title="${title}">${i}</span>`);
