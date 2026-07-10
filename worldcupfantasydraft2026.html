@@ -1828,7 +1828,8 @@ function rankRangeHTML(best, worst, mgrName) {
   for (let i = 1; i <= 10; i++) {
     const excluded = ((mgrName === 'Danny' || mgrName === 'Ray') && i === 7)
                   || (mgrName === 'Reed' && i === 1)
-                  || (mgrName === 'Brandon' && i === 6);
+                  || (mgrName === 'Brandon' && i === 6)
+                  || (mgrName === 'Brandon' && i === 7);
     const inRange = !excluded && i >= best && i <= worst;
     const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
     const title = inRange ? (best === worst ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
