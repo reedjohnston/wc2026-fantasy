@@ -1815,13 +1815,13 @@ function rankRangeHTML(best, worst, mgrName) {
   // Hardcoded bracket constraints based on confirmed results:
   // Morocco eliminated → Reed stays at 42, Dan guaranteed 46 → Reed cannot finish 1st
   if (mgrName === 'Reed')  { best = Math.max(best, 2); }
-  if (mgrName === 'Danny') { best = 1; worst = Math.min(worst, 7); }
+  if (mgrName === 'Danny') { best = 1; worst = Math.min(worst, 5); }
   if (mgrName === 'Ray')   { best = 8; worst = 8; }
   if (mgrName === 'Dan')    { best = 1; worst = 2; }
   if (mgrName === 'Robbie') { worst = Math.min(worst, 5); }
   const pips = [];
   for (let i = 1; i <= 10; i++) {
-    const excluded = ((mgrName === 'Danny') && (i === 7 || i === 8))
+    const excluded = (mgrName === 'Danny' && i > 5)
                   || (mgrName === 'Ray' && i !== 8)
                   || (mgrName === 'Reed' && i === 1)
                   || (mgrName === 'Brandon' && (i === 6 || i === 7))
@@ -3614,6 +3614,20 @@ if (autoRefreshEnabled) beginTicking(); else updateAutoBtn();
 // whether we're currently in a match window (which gates the auto-refresh
 // timer but shouldn't block the initial data load).
 syncLiveResults();
+
+// ── PULL TO REFRESH ───────────────────────────────────────────────────────────
+(function() {
+  let startY = 0, pulling = false;
+  document.addEventListener('touchstart', e => {
+    if (window.scrollY === 0) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+  document.addEventListener('touchend', e => {
+    if (!pulling) return;
+    const dist = e.changedTouches[0].clientY - startY;
+    pulling = false;
+    if (dist > 80) syncLiveResults();
+  }, { passive: true });
+})();
 </script>
 <div id="detail-modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal-card" role="dialog" aria-modal="true">
