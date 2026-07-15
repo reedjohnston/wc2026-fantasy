@@ -1819,6 +1819,7 @@ function rankRangeHTML(best, worst, mgrName) {
   if (mgrName === 'Ray')   { best = 8; worst = 8; }
   if (mgrName === 'Dan')    { best = 1; worst = 2; }
   if (mgrName === 'Robbie') { worst = Math.min(worst, 5); }
+  if (mgrName === 'Brian')  { best = 5; worst = 5; }
   const pips = [];
   for (let i = 1; i <= 10; i++) {
     const excluded = (mgrName === 'Danny' && i > 5)
@@ -1826,7 +1827,7 @@ function rankRangeHTML(best, worst, mgrName) {
                   || (mgrName === 'Reed' && i === 1)
                   || (mgrName === 'Brandon' && (i === 6 || i === 7))
                   || (mgrName === 'Dan' && i > 2)
-                  || (mgrName === 'Brian' && (i < 5 || i > 6))
+                  || (mgrName === 'Brian' && i !== 5)
                   || (mgrName === 'Robbie' && i > 5);
     const inRange = !excluded && i >= best && i <= worst;
     const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
