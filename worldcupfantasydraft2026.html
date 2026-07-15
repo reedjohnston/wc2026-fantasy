@@ -1812,26 +1812,31 @@ function renderNextUp() {
 }
 
 function rankRangeHTML(best, worst, mgrName) {
-  // Hardcoded bracket constraints based on confirmed results:
-  // Morocco eliminated → Reed stays at 42, Dan guaranteed 46 → Reed cannot finish 1st
-  if (mgrName === 'Reed')  { best = Math.max(best, 2); }
-  if (mgrName === 'Danny') { best = 1; worst = Math.min(worst, 5); }
-  if (mgrName === 'Ray')   { best = 8; worst = 8; }
-  if (mgrName === 'Dan')    { best = 1; worst = 2; }
-  if (mgrName === 'Robbie') { worst = Math.min(worst, 5); }
-  if (mgrName === 'Brian')  { best = 6; worst = 6; }
+  // Hardcoded based on SF2 scenarios (Argentina vs England):
+  // Argentina wins: Dan=1, Reed=2-3, Brandon=3-4, Danny=2-4, Robbie=5
+  // England wins:   Dan=1-2, Reed=3-4, Brandon=4-5, Danny=1,2,5, Robbie=1,3
+  // Union of both scenarios:
+
+  // Explicit allowed sets per manager
+  const allowed = {
+    'Dan':     new Set([1,2]),           // 1 both scenarios, 2 if England wins
+    'Reed':    new Set([2,3,4]),         // 2-3 Arg, 3-4 Eng
+    'Brandon': new Set([3,4,5]),         // 3-4 Arg, 4-5 Eng
+    'Danny':   new Set([1,2,3,4,5]),     // 2-4 Arg, 1,2,5 Eng
+    'Robbie':  new Set([1,3,5]),         // 5 Arg, 1,3 Eng
+    'Brian':   new Set([6]),
+    'Jason':   new Set([7]),
+    'Ray':     new Set([8]),
+    'Abe':     new Set([9]),
+    'Keo':     new Set([10]),
+  };
+
+  const set = allowed[mgrName];
   const pips = [];
   for (let i = 1; i <= 10; i++) {
-    const excluded = (mgrName === 'Danny' && i > 5)
-                  || (mgrName === 'Ray' && i !== 8)
-                  || (mgrName === 'Reed' && i === 1)
-                  || (mgrName === 'Brandon' && (i <= 2 || i === 6 || i === 7))
-                  || (mgrName === 'Dan' && i > 2)
-                  || (mgrName === 'Brian' && i !== 6)
-                  || (mgrName === 'Robbie' && i > 5);
-    const inRange = !excluded && i >= best && i <= worst;
-    const cls = inRange ? (best === worst ? 'locked' : 'possible') : 'inactive';
-    const title = inRange ? (best === worst ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
+    const inRange = set ? set.has(i) : (i >= best && i <= worst);
+    const cls = inRange ? (set && set.size === 1 ? 'locked' : 'possible') : 'inactive';
+    const title = inRange ? (set && set.size === 1 ? `Locked at #${i}` : `Can finish #${i}`) : `Cannot finish #${i}`;
     pips.push(`<span class="rank-pip ${cls}" title="${title}">${i}</span>`);
   }
   return `<div class="rank-range">${pips.join('')}</div>`;
