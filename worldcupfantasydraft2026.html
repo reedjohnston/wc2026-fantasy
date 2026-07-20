@@ -1186,6 +1186,13 @@ function groupGF(t) {
     if (a === t) gf += sc.s1 || 0;
     else if (b === t) gf += sc.s2 || 0;
   });
+  // Add KO goals
+  Object.entries(state.koScores || {}).forEach(([id, ms]) => {
+    if (ms.gfA == null || ms.gfB == null) return;
+    const {tA, tB} = _bt[id] || {};
+    if (tA === t) gf += ms.gfA || 0;
+    else if (tB === t) gf += ms.gfB || 0;
+  });
   return gf;
 }
 
